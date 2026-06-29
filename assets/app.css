@@ -270,3 +270,29 @@ input,select,textarea{font-family:inherit}
   .lrow{grid-template-columns:1.3fr 1fr .9fr;}
   .lrow .telc,.lrow .telh,.lrow .formc,.lrow .formh,.lrow .actc,.lrow .acth{display:none}
 }
+
+/* ---- sync badge ---- */
+.syncdot{margin-left:8px;font-size:13px;line-height:1;cursor:default;transition:color .3s;vertical-align:middle}
+.syncdot.off{color:#b9c6c0}
+.syncdot.ok{color:#3fae78}
+.syncdot.err{color:#d06a6a}
+.syncdot.sync{color:var(--gold-d);animation:mhpulse 1s infinite}
+@keyframes mhpulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* ---- Documents : onglets + paysage 2 colonnes sans scroll ---- */
+.doctabs{display:flex;gap:8px;margin-bottom:10px}
+.doctab{flex:1;padding:9px 10px;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:600;color:var(--green-d);cursor:pointer;font-size:14px}
+.doctab.on{background:var(--green-d);color:#fff;border-color:var(--green-d)}
+.stage.hide{display:none}
+
+@media(min-width:980px){
+  #scr-docs{height:calc(100vh - var(--mh-head,118px));overflow:hidden}
+  #scr-docs>.card-sec{height:100%;overflow:hidden;display:flex;flex-direction:column}
+  #scr-docs .generator{grid-template-columns:minmax(300px,0.92fr) 1.08fr !important;height:100%;align-items:stretch;min-height:0}
+  #scr-docs .gen-inputs{height:100%;overflow-y:auto;padding-right:10px;min-height:0}
+  #scr-docs .gen-docs{height:100%;display:flex;flex-direction:column;min-height:0}
+  #scr-docs .gen-docs .stage{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0}
+  #scr-docs .gen-docs .stage .cap{flex:0 0 auto}
+  #scr-docs .gen-docs .docwrap{flex:1 1 auto;min-height:0}
+  #scr-docs .gen-docs .acts{flex:0 0 auto;margin-top:10px}
+}
