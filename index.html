@@ -9,157 +9,187 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · propulsé par NexusAI</span></div></div>
-  <span class="syncdot off" id="syncDot" title="Local">●</span>
-  <span class="pilltag">STUDIO</span>
-</div>
+<!-- ===== SIDEBAR ===== -->
+<aside class="side" id="side">
+  <div class="side-brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · NexusAI</span></div></div>
+  <div class="side-prof">
+    <div class="av">MH</div>
+    <b>Magic Hands</b><span>Studio de documents</span>
+  </div>
+  <nav class="side-nav">
+    <button class="snav on" data-scr="home"><span class="si">◳</span>Tableau de bord</button>
+    <button class="snav" data-scr="docs"><span class="si">📄</span>Documents</button>
+    <button class="snav" data-scr="cat"><span class="si">📚</span>Catalogue</button>
+    <button class="snav" data-scr="elv"><span class="si">👥</span>Élèves</button>
+    <button class="snav" data-scr="close"><span class="si">📈</span>Closing</button>
+    <button class="snav" data-scr="acc"><span class="si">⚙️</span>Compte</button>
+  </nav>
+  <div class="side-foot"><div class="fl">Prochaine session</div><b id="sideNextL">—</b><small id="sideNextD"></small></div>
+</aside>
+<div class="scrim" id="scrim"></div>
 
-<nav class="tabbar2" id="tabbar2">
-  <button class="tbtn on" data-scr="home"><span class="ti">⌂</span>Accueil</button>
-  <button class="tbtn" data-scr="docs"><span class="ti">📄</span>Documents</button>
-  <button class="tbtn" data-scr="close"><span class="ti">📊</span>Closing</button>
-  <button class="tbtn" data-scr="acc"><span class="ti">👤</span>Compte</button>
-</nav>
+<!-- ===== MAIN ===== -->
+<main class="main" id="main">
 
-<div class="app">
+  <header class="appbar">
+    <button class="burger" id="burger" aria-label="Menu">☰</button>
+    <div class="brand"><img src="assets/logo-full.png" alt=""><div class="bt"><b>Magic Hands</b><span>Studio</span></div></div>
+    <span class="syncdot off" id="syncDot" style="margin-left:auto" title="Local">●</span>
+  </header>
 
-  <!-- ===== ACCUEIL ===== -->
+  <div class="mhead">
+    <div class="ht"><h2 id="mhTitle">Tableau de bord</h2><p id="mhSub">Vue d’ensemble · Magic Hands</p></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn cta" data-scr="docs" style="min-width:0;flex:0 0 auto;padding:11px 18px">+ Nouveau document</button>
+      <div class="syncwrap"><span class="syncdot off" id="syncDotD" title="Local">●</span><span id="syncTxt">Local</span></div>
+    </div>
+  </div>
+
+  <!-- ===== TABLEAU DE BORD ===== -->
   <section class="scr on" id="scr-home">
-    <div class="hero rv">
-      <img class="mi-wm" src="assets/logo-mi.png" alt="">
-      <div class="eyebrow">Magic Hands School</div>
-      <h1>Génère un <span>certificat officiel</span> en 30 secondes</h1>
-      <p>Certificats et attestations conformes, prêts à imprimer, sans ressaisie. Catalogue, élèves et closing au même endroit.</p>
-      <button class="hbtn" data-scr="docs">Créer un document →</button>
+    <div class="kpis">
+      <div class="kpi gold"><span class="ki">📄</span><div class="kl">Documents générés</div><div class="kv" id="kpiDocs">0</div></div>
+      <div class="kpi green"><span class="ki">👥</span><div class="kl">Élèves</div><div class="kv" id="kpiElv">0</div></div>
+      <div class="kpi cream"><span class="ki">💶</span><div class="kl">CA encaissé</div><div class="kv" id="kpiCa">0 €</div></div>
     </div>
-
-    <div class="search2" onclick="document.getElementById('homeSearch').focus()">
-      🔍<input id="homeSearch" placeholder="Rechercher un élève…">
+    <div class="panels">
+      <div class="panel">
+        <div class="ph"><h3>Derniers documents</h3><span class="sub">élèves récents</span></div>
+        <table class="dtable"><thead><tr><th>Élève</th><th>Formation</th><th class="hide-sm">Émis le</th><th>Type</th></tr></thead><tbody id="recentDocs"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3>Statistiques</h3><span class="sub">élèves / mois</span></div>
+        <div class="chartbox"><canvas id="chartBars"></canvas></div>
+      </div>
     </div>
-
-    <div class="shead"><h3>Que veux-tu faire ?</h3></div>
-    <div class="svc-grid rv">
-      <div class="svc" data-go="docs" data-doc="cert"><div class="ic">🎓</div><b>Certificat</b></div>
-      <div class="svc" data-go="docs" data-doc="att"><div class="ic">📜</div><b>Attestation</b></div>
-      <div class="svc gold" data-go="docs" data-doc="both"><div class="ic">⬇️</div><b>Les 2 (1 PDF)</b></div>
-      <div class="svc" data-go="acc"><div class="ic">📚</div><b>Catalogue</b></div>
-      <div class="svc" data-go="acc"><div class="ic">👥</div><b>Élèves</b></div>
-      <div class="svc" data-go="close"><div class="ic">📊</div><b>Closing</b></div>
-      <div class="svc" data-go="docs"><div class="ic">📅</div><b>Sessions</b></div>
-      <div class="svc gold" data-go="acc"><div class="ic">⚙️</div><b>Réglages</b></div>
-    </div>
-
-    <div class="shead"><h3>Formations populaires</h3><a data-go="acc">Tout le catalogue →</a></div>
-    <div class="reco-grid rv">
-      <div class="reco"><div class="thumb">💆</div><div class="body"><b>Mix Massage Arts</b><div class="rate">★ 4.9 <small>· module phare</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Mix Massage Arts">Générer</button></div></div></div>
-      <div class="reco"><div class="thumb">🧘</div><div class="body"><b>Deep Stretching</b><div class="rate">★ 4.8 <small>· souplesse</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Deep Stretching">Générer</button></div></div></div>
-      <div class="reco"><div class="thumb">✨</div><div class="body"><b>Magic Face</b><div class="rate">★ 4.8 <small>· visage</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Magic Face">Générer</button></div></div></div>
-    </div>
-
-    <div class="assur rv">
-      <div class="it"><div class="ic">📜</div><b>Documents officiels</b><small>Modèle figé certifié</small></div>
-      <div class="it"><div class="ic">⚡</div><b>PDF instantané</b><small>Génération en 1 clic</small></div>
-      <div class="it"><div class="ic">📶</div><b>100% hors-ligne</b><small>Aucun serveur requis</small></div>
-      <div class="it"><div class="ic">🔒</div><b>Données privées</b><small>Tout reste sur l'appareil</small></div>
+    <div class="panels eq">
+      <div class="panel">
+        <div class="ph"><h3>Pipeline</h3><span class="sub">répartition closing</span></div>
+        <div class="chartbox sm"><canvas id="chartDonut"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3>Évolution du CA</h3><span class="sub">par mois (€)</span></div>
+        <div class="chartbox sm"><canvas id="chartLine"></canvas></div>
+      </div>
     </div>
   </section>
 
   <!-- ===== DOCUMENTS ===== -->
   <section class="scr" id="scr-docs">
-    <div class="shead"><h3>Studio de documents</h3></div>
     <div class="card-sec"><div data-mount="generator"></div></div>
+  </section>
+
+  <!-- ===== CATALOGUE ===== -->
+  <section class="scr" id="scr-cat">
+    <div class="card-sec"><div data-mount="catalogue"></div></div>
+  </section>
+
+  <!-- ===== ÉLÈVES ===== -->
+  <section class="scr" id="scr-elv">
+    <div class="card-sec"><div data-mount="eleves"></div></div>
   </section>
 
   <!-- ===== CLOSING ===== -->
   <section class="scr" id="scr-close">
-    <div class="shead"><h3>Pipeline closing</h3></div>
     <div data-mount="closing"></div>
   </section>
 
   <!-- ===== COMPTE ===== -->
   <section class="scr" id="scr-acc">
     <div class="card-sec" id="syncBox"></div>
-    <div class="shead"><h3>Réglages</h3></div>
     <div class="card-sec"><div data-mount="settings"></div></div>
-    <div class="shead"><h3>Catalogue</h3></div>
-    <div class="card-sec"><div data-mount="catalogue"></div></div>
-    <div class="shead"><h3>Base élèves</h3></div>
-    <div class="card-sec"><div data-mount="eleves"></div></div>
   </section>
 
-</div>
+</main>
 
 <div class="toast" id="toast"></div>
 
 <script>
-/* nav — défini AVANT app.js (winGenerate appelle MHgoGenerate) */
+/* nav — défini AVANT app.js (app.js appelle window.MHgoGenerate) */
 (function(){
+  var TITLES={
+    home:['Tableau de bord','Vue d’ensemble · Magic Hands'],
+    docs:['Studio de documents','Certificat & attestation officiels'],
+    cat:['Catalogue','Modules, offres & sessions'],
+    elv:['Base élèves','Historique des documents générés'],
+    close:['Closing','Pipeline commercial'],
+    acc:['Compte','Synchronisation & réglages']
+  };
+  function byId(id){return document.getElementById(id)}
+  function closeDrawer(){var s=byId('side'),sc=byId('scrim');if(s)s.classList.remove('open');if(sc)sc.classList.remove('show')}
   function showScr(name){
-    var btns=document.querySelectorAll('.tbtn');
-    for(var i=0;i<btns.length;i++)btns[i].classList.toggle('on',btns[i].getAttribute('data-scr')===name);
+    var nav=document.querySelectorAll('.snav');
+    for(var i=0;i<nav.length;i++)nav[i].classList.toggle('on',nav[i].getAttribute('data-scr')===name);
     var ss=document.querySelectorAll('.scr');
     for(var j=0;j<ss.length;j++)ss[j].classList.toggle('on',ss[j].id==='scr-'+name);
+    var t=TITLES[name]; if(t){var a=byId('mhTitle'),b=byId('mhSub'); if(a)a.textContent=t[0]; if(b)b.textContent=t[1];}
+    closeDrawer();
     if(name==='docs')requestAnimationFrame(mhDocsFit);
+    if(name==='home'&&window.MHdash&&window.MHdash.render)window.MHdash.render();
+    var m=byId('main'); if(m)m.scrollTo?m.scrollTo({top:0,behavior:'smooth'}):m.scrollTop=0;
     window.scrollTo({top:0,behavior:'smooth'});
   }
-  function setHead(){var tb=document.querySelector('.topbar'),nv=document.querySelector('.tabbar2');var h=(tb?tb.offsetHeight:0)+(nv?nv.offsetHeight:0);document.documentElement.style.setProperty('--mh-head',h+'px');}
+  function setHead(){var nv=document.querySelector('.appbar');var h=(nv&&getComputedStyle(nv).display!=='none')?nv.offsetHeight:0;document.documentElement.style.setProperty('--mh-head',h+'px');}
   function mhDocsFit(){
-    var scr=document.getElementById('scr-docs'); if(!scr)return;
+    var scr=byId('scr-docs'); if(!scr)return;
     var gd=scr.querySelector('.gen-docs'); if(!gd)return;
     var stages=gd.querySelectorAll('.stage');
     if(stages.length>=2 && !gd.querySelector('.doctabs')){
       var bar=document.createElement('div'); bar.className='doctabs';
       bar.innerHTML='<button type="button" class="doctab on" data-i="0">Certificat</button><button type="button" class="doctab" data-i="1">Attestation</button>';
       gd.insertBefore(bar,stages[0]); stages[1].classList.add('hide');
-      bar.addEventListener('click',function(e){var b=e.target.closest('.doctab'); if(!b)return;
-        var btns=bar.querySelectorAll('.doctab'); for(var k=0;k<btns.length;k++)btns[k].classList.remove('on'); b.classList.add('on');
-        var i=+b.getAttribute('data-i'); stages[0].classList.toggle('hide',i!==0); stages[1].classList.toggle('hide',i!==1);
+      bar.addEventListener('click',function(e){var btn=e.target.closest('.doctab'); if(!btn)return;
+        var bs=bar.querySelectorAll('.doctab'); for(var k=0;k<bs.length;k++)bs[k].classList.remove('on'); btn.classList.add('on');
+        var i=+btn.getAttribute('data-i'); stages[0].classList.toggle('hide',i!==0); stages[1].classList.toggle('hide',i!==1);
         requestAnimationFrame(mhDocsScale);});
     }
     setHead(); mhDocsScale();
   }
   function mhDocsScale(){
-    var scr=document.getElementById('scr-docs'); if(!scr)return;
+    var scr=byId('scr-docs'); if(!scr)return;
     var gd=scr.querySelector('.gen-docs'); if(!gd)return;
-    var desktop=window.matchMedia?window.matchMedia('(min-width:980px)').matches:(window.innerWidth>=980);
+    var desktop=window.matchMedia?window.matchMedia('(min-width:981px)').matches:(window.innerWidth>=981);
     var tabs=gd.querySelector('.doctabs'), acts=gd.querySelector('.acts');
     var vis=gd.querySelector('.stage:not(.hide)'), capH=0; if(vis){var cap=vis.querySelector('.cap'); if(cap)capH=cap.offsetHeight;}
     var avail = desktop ? (gd.clientHeight-(tabs?tabs.offsetHeight:0)-(acts?acts.offsetHeight:0)-capH-22) : Math.round(window.innerHeight*0.70);
     if(avail<160)avail=160;
-    var a=document.getElementById('wrapCert'),b=document.getElementById('wrapAtt');
+    var a=byId('wrapCert'),b=byId('wrapAtt');
     if(a)a.setAttribute('data-maxh',avail); if(b)b.setAttribute('data-maxh',avail);
     if(window.MH&&window.MH.scaleDocs)window.MH.scaleDocs();
   }
-  var _rt; window.addEventListener('resize',function(){clearTimeout(_rt);_rt=setTimeout(function(){setHead();var s=document.getElementById('scr-docs');if(s&&s.classList.contains('on'))mhDocsScale();},150);});
+  var _rt; window.addEventListener('resize',function(){clearTimeout(_rt);_rt=setTimeout(function(){setHead();var s=byId('scr-docs');if(s&&s.classList.contains('on'))mhDocsScale();if(window.MHdash&&window.MHdash.resize)window.MHdash.resize();},150);});
   document.addEventListener('DOMContentLoaded',setHead);
   window.__showScr=showScr;
   window.__docsFit=mhDocsFit;
   window.MHgoGenerate=function(){showScr('docs')};
   function pickFormation(name){
     showScr('docs');
-    var sel=document.getElementById('formation');
+    var sel=byId('formation');
     if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===name){sel.value=name;break}}
       if(window.MH&&window.MH.render)window.MH.render();}
   }
-  // delegated nav
+  /* burger / scrim */
   document.addEventListener('click',function(e){
-    var s=e.target.closest('[data-scr]'); if(s){showScr(s.getAttribute('data-scr'));return}
+    if(e.target.closest('#burger')){var s=byId('side'),sc=byId('scrim');if(s)s.classList.toggle('open');if(sc)sc.classList.toggle('show');return}
+    if(e.target.closest('#scrim')){closeDrawer();return}
+    var sv=e.target.closest('[data-scr]'); if(sv){showScr(sv.getAttribute('data-scr'));return}
     var g=e.target.closest('[data-go]'); if(g){showScr(g.getAttribute('data-go'));return}
     var f=e.target.closest('[data-form]'); if(f){pickFormation(f.getAttribute('data-form'));return}
   });
-  // home search -> compte + filtre élèves
-  var hs=document.getElementById('homeSearch');
-  if(hs)hs.addEventListener('input',function(){
-    showScr('acc');
-    var cs=document.getElementById('cliSearch');
-    if(cs){cs.value=hs.value;cs.dispatchEvent(new Event('input'))}
+  /* miroir badge sync : #syncDot (réel) -> #syncDotD + #syncTxt (desktop) */
+  function mirror(){var src=byId('syncDot'),dst=byId('syncDotD'),tx=byId('syncTxt');if(src&&dst){dst.className=src.className;dst.title=src.title;}if(src&&tx){tx.textContent=src.title||'Local';}}
+  document.addEventListener('DOMContentLoaded',function(){
+    var src=byId('syncDot');
+    if(src&&window.MutationObserver){var mo=new MutationObserver(mirror);mo.observe(src,{attributes:true,attributeFilter:['class','title']});}
+    mirror();
   });
 })();
 </script>
 <script src="assets/lib/jspdf.umd.min.js"></script>
 <script src="assets/lib/html2canvas.min.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/lib/chart.min.js"></script>
+<script src="assets/dashboard.js"></script>
 <script src="assets/lib/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="assets/sync.js"></script>
