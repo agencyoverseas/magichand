@@ -11,6 +11,7 @@
 
 <div class="topbar">
   <div class="brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · propulsé par NexusAI</span></div></div>
+  <span class="syncdot off" id="syncDot" title="Local">●</span>
   <span class="pilltag">STUDIO</span>
 </div>
 
@@ -78,6 +79,7 @@
 
   <!-- ===== COMPTE ===== -->
   <section class="scr" id="scr-acc">
+    <div class="card-sec" id="syncBox"></div>
     <div class="shead"><h3>Réglages</h3></div>
     <div class="card-sec"><div data-mount="settings"></div></div>
     <div class="shead"><h3>Catalogue</h3></div>
@@ -98,10 +100,41 @@
     for(var i=0;i<btns.length;i++)btns[i].classList.toggle('on',btns[i].getAttribute('data-scr')===name);
     var ss=document.querySelectorAll('.scr');
     for(var j=0;j<ss.length;j++)ss[j].classList.toggle('on',ss[j].id==='scr-'+name);
-    if(name==='docs'&&window.MH&&window.MH.scaleDocs)requestAnimationFrame(window.MH.scaleDocs);
+    if(name==='docs')requestAnimationFrame(mhDocsFit);
     window.scrollTo({top:0,behavior:'smooth'});
   }
+  function setHead(){var tb=document.querySelector('.topbar'),nv=document.querySelector('.tabbar2');var h=(tb?tb.offsetHeight:0)+(nv?nv.offsetHeight:0);document.documentElement.style.setProperty('--mh-head',h+'px');}
+  function mhDocsFit(){
+    var scr=document.getElementById('scr-docs'); if(!scr)return;
+    var gd=scr.querySelector('.gen-docs'); if(!gd)return;
+    var stages=gd.querySelectorAll('.stage');
+    if(stages.length>=2 && !gd.querySelector('.doctabs')){
+      var bar=document.createElement('div'); bar.className='doctabs';
+      bar.innerHTML='<button type="button" class="doctab on" data-i="0">Certificat</button><button type="button" class="doctab" data-i="1">Attestation</button>';
+      gd.insertBefore(bar,stages[0]); stages[1].classList.add('hide');
+      bar.addEventListener('click',function(e){var b=e.target.closest('.doctab'); if(!b)return;
+        var btns=bar.querySelectorAll('.doctab'); for(var k=0;k<btns.length;k++)btns[k].classList.remove('on'); b.classList.add('on');
+        var i=+b.getAttribute('data-i'); stages[0].classList.toggle('hide',i!==0); stages[1].classList.toggle('hide',i!==1);
+        requestAnimationFrame(mhDocsScale);});
+    }
+    setHead(); mhDocsScale();
+  }
+  function mhDocsScale(){
+    var scr=document.getElementById('scr-docs'); if(!scr)return;
+    var gd=scr.querySelector('.gen-docs'); if(!gd)return;
+    var desktop=window.matchMedia?window.matchMedia('(min-width:980px)').matches:(window.innerWidth>=980);
+    var tabs=gd.querySelector('.doctabs'), acts=gd.querySelector('.acts');
+    var vis=gd.querySelector('.stage:not(.hide)'), capH=0; if(vis){var cap=vis.querySelector('.cap'); if(cap)capH=cap.offsetHeight;}
+    var avail = desktop ? (gd.clientHeight-(tabs?tabs.offsetHeight:0)-(acts?acts.offsetHeight:0)-capH-22) : Math.round(window.innerHeight*0.70);
+    if(avail<160)avail=160;
+    var a=document.getElementById('wrapCert'),b=document.getElementById('wrapAtt');
+    if(a)a.setAttribute('data-maxh',avail); if(b)b.setAttribute('data-maxh',avail);
+    if(window.MH&&window.MH.scaleDocs)window.MH.scaleDocs();
+  }
+  var _rt; window.addEventListener('resize',function(){clearTimeout(_rt);_rt=setTimeout(function(){setHead();var s=document.getElementById('scr-docs');if(s&&s.classList.contains('on'))mhDocsScale();},150);});
+  document.addEventListener('DOMContentLoaded',setHead);
   window.__showScr=showScr;
+  window.__docsFit=mhDocsFit;
   window.MHgoGenerate=function(){showScr('docs')};
   function pickFormation(name){
     showScr('docs');
@@ -127,5 +160,8 @@
 <script src="assets/lib/jspdf.umd.min.js"></script>
 <script src="assets/lib/html2canvas.min.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/lib/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="assets/sync.js"></script>
 </body>
 </html>
