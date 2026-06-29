@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Hands School — Studio de documents</title>
+<script>window.MH_ASSETS={certBg:'assets/cert-bg.png',attBg:'assets/attest-bg.png',sign:'assets/sign.jpg',logoMi:'assets/logo-mi.png',logoFull:'assets/logo-full.png'};</script>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · propulsé par NexusAI</span></div></div>
+  <span class="pilltag">STUDIO</span>
+</div>
+
+<nav class="tabbar2" id="tabbar2">
+  <button class="tbtn on" data-scr="home"><span class="ti">⌂</span>Accueil</button>
+  <button class="tbtn" data-scr="docs"><span class="ti">📄</span>Documents</button>
+  <button class="tbtn" data-scr="close"><span class="ti">📊</span>Closing</button>
+  <button class="tbtn" data-scr="acc"><span class="ti">👤</span>Compte</button>
+</nav>
+
+<div class="app">
+
+  <!-- ===== ACCUEIL ===== -->
+  <section class="scr on" id="scr-home">
+    <div class="hero rv">
+      <img class="mi-wm" src="assets/logo-mi.png" alt="">
+      <div class="eyebrow">Magic Hands School</div>
+      <h1>Génère un <span>certificat officiel</span> en 30 secondes</h1>
+      <p>Certificats et attestations conformes, prêts à imprimer, sans ressaisie. Catalogue, élèves et closing au même endroit.</p>
+      <button class="hbtn" data-scr="docs">Créer un document →</button>
+    </div>
+
+    <div class="search2" onclick="document.getElementById('homeSearch').focus()">
+      🔍<input id="homeSearch" placeholder="Rechercher un élève…">
+    </div>
+
+    <div class="shead"><h3>Que veux-tu faire ?</h3></div>
+    <div class="svc-grid rv">
+      <div class="svc" data-go="docs" data-doc="cert"><div class="ic">🎓</div><b>Certificat</b></div>
+      <div class="svc" data-go="docs" data-doc="att"><div class="ic">📜</div><b>Attestation</b></div>
+      <div class="svc gold" data-go="docs" data-doc="both"><div class="ic">⬇️</div><b>Les 2 (1 PDF)</b></div>
+      <div class="svc" data-go="acc"><div class="ic">📚</div><b>Catalogue</b></div>
+      <div class="svc" data-go="acc"><div class="ic">👥</div><b>Élèves</b></div>
+      <div class="svc" data-go="close"><div class="ic">📊</div><b>Closing</b></div>
+      <div class="svc" data-go="docs"><div class="ic">📅</div><b>Sessions</b></div>
+      <div class="svc gold" data-go="acc"><div class="ic">⚙️</div><b>Réglages</b></div>
+    </div>
+
+    <div class="shead"><h3>Formations populaires</h3><a data-go="acc">Tout le catalogue →</a></div>
+    <div class="reco-grid rv">
+      <div class="reco"><div class="thumb">💆</div><div class="body"><b>Mix Massage Arts</b><div class="rate">★ 4.9 <small>· module phare</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Mix Massage Arts">Générer</button></div></div></div>
+      <div class="reco"><div class="thumb">🧘</div><div class="body"><b>Deep Stretching</b><div class="rate">★ 4.8 <small>· souplesse</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Deep Stretching">Générer</button></div></div></div>
+      <div class="reco"><div class="thumb">✨</div><div class="body"><b>Magic Face</b><div class="rate">★ 4.8 <small>· visage</small></div><div class="bot"><span class="price">2 000€</span><button class="go" data-form="Magic Face">Générer</button></div></div></div>
+    </div>
+
+    <div class="assur rv">
+      <div class="it"><div class="ic">📜</div><b>Documents officiels</b><small>Modèle figé certifié</small></div>
+      <div class="it"><div class="ic">⚡</div><b>PDF instantané</b><small>Génération en 1 clic</small></div>
+      <div class="it"><div class="ic">📶</div><b>100% hors-ligne</b><small>Aucun serveur requis</small></div>
+      <div class="it"><div class="ic">🔒</div><b>Données privées</b><small>Tout reste sur l'appareil</small></div>
+    </div>
+  </section>
+
+  <!-- ===== DOCUMENTS ===== -->
+  <section class="scr" id="scr-docs">
+    <div class="shead"><h3>Studio de documents</h3></div>
+    <div class="card-sec"><div data-mount="generator"></div></div>
+  </section>
+
+  <!-- ===== CLOSING ===== -->
+  <section class="scr" id="scr-close">
+    <div class="shead"><h3>Pipeline closing</h3></div>
+    <div data-mount="closing"></div>
+  </section>
+
+  <!-- ===== COMPTE ===== -->
+  <section class="scr" id="scr-acc">
+    <div class="shead"><h3>Réglages</h3></div>
+    <div class="card-sec"><div data-mount="settings"></div></div>
+    <div class="shead"><h3>Catalogue</h3></div>
+    <div class="card-sec"><div data-mount="catalogue"></div></div>
+    <div class="shead"><h3>Base élèves</h3></div>
+    <div class="card-sec"><div data-mount="eleves"></div></div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* nav — défini AVANT app.js (winGenerate appelle MHgoGenerate) */
+(function(){
+  function showScr(name){
+    var btns=document.querySelectorAll('.tbtn');
+    for(var i=0;i<btns.length;i++)btns[i].classList.toggle('on',btns[i].getAttribute('data-scr')===name);
+    var ss=document.querySelectorAll('.scr');
+    for(var j=0;j<ss.length;j++)ss[j].classList.toggle('on',ss[j].id==='scr-'+name);
+    if(name==='docs'&&window.MH&&window.MH.scaleDocs)requestAnimationFrame(window.MH.scaleDocs);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  window.__showScr=showScr;
+  window.MHgoGenerate=function(){showScr('docs')};
+  function pickFormation(name){
+    showScr('docs');
+    var sel=document.getElementById('formation');
+    if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===name){sel.value=name;break}}
+      if(window.MH&&window.MH.render)window.MH.render();}
+  }
+  // delegated nav
+  document.addEventListener('click',function(e){
+    var s=e.target.closest('[data-scr]'); if(s){showScr(s.getAttribute('data-scr'));return}
+    var g=e.target.closest('[data-go]'); if(g){showScr(g.getAttribute('data-go'));return}
+    var f=e.target.closest('[data-form]'); if(f){pickFormation(f.getAttribute('data-form'));return}
+  });
+  // home search -> compte + filtre élèves
+  var hs=document.getElementById('homeSearch');
+  if(hs)hs.addEventListener('input',function(){
+    showScr('acc');
+    var cs=document.getElementById('cliSearch');
+    if(cs){cs.value=hs.value;cs.dispatchEvent(new Event('input'))}
+  });
+})();
+</script>
+<script src="assets/lib/jspdf.umd.min.js"></script>
+<script src="assets/lib/html2canvas.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
