@@ -18,12 +18,12 @@ var DEFAULT_CAT={
 };
 var DEFAULT_SET={formateur:'Jordan Ly Pinto',etab:'Magic Hands School',lieuDef:'Paris',dureeDef:'1 jour (8 heures)'};
 var DEFAULT_CON=[
-  {id:'c1',n:'Sophie Bernard',tel:'0690 12 34 56',form:'Mix Massage Arts',stage:'won',amt:2000,ts:Date.now()-86400000*1},
-  {id:'c2',n:'Kévin Durand',tel:'0696 88 21 09',form:'Pack Incontournable',stage:'won',amt:4900,ts:Date.now()-86400000*2},
-  {id:'c3',n:'Laura Petit',tel:'0691 45 78 02',form:'Magic Face',stage:'rdv',amt:2000,ts:Date.now()-86400000*3},
-  {id:'c4',n:'Marc Olivier',tel:'0694 33 11 90',form:'Magic Voyage + Pack',stage:'contact',amt:8000,ts:Date.now()-86400000*4},
-  {id:'c5',n:'Nadia Rivière',tel:'0690 77 65 43',form:'Deep Stretching',stage:'new',amt:2000,ts:Date.now()-86400000*5},
-  {id:'c6',n:'Yann Lefebvre',tel:'0696 09 88 12',form:'Sensei Express',stage:'won',amt:15000,ts:Date.now()-86400000*6}
+  {id:'c1',n:'Sophie Bernard',tel:'0690 12 34 56',form:'Mix Massage Arts',stage:'won',amt:2000,ts:Date.now()-86400000*1,src:'insta',temp:'hot'},
+  {id:'c2',n:'Kévin Durand',tel:'0696 88 21 09',form:'Pack Incontournable',stage:'won',amt:4900,ts:Date.now()-86400000*2,src:'bao',temp:'hot2'},
+  {id:'c3',n:'Laura Petit',tel:'0691 45 78 02',form:'Magic Face',stage:'rdv',amt:2000,ts:Date.now()-86400000*3,src:'insta',temp:'warm'},
+  {id:'c4',n:'Marc Olivier',tel:'0694 33 11 90',form:'Magic Voyage + Pack',stage:'contact',amt:8000,ts:Date.now()-86400000*4,src:'site',temp:'warm'},
+  {id:'c5',n:'Nadia Rivière',tel:'0690 77 65 43',form:'Deep Stretching',stage:'new',amt:2000,ts:Date.now()-86400000*5,src:'event',temp:'cold'},
+  {id:'c6',n:'Yann Lefebvre',tel:'0696 09 88 12',form:'Sensei Express',stage:'won',amt:15000,ts:Date.now()-86400000*6,src:'bao',temp:'hot2'}
 ];
 function load(k,f){try{var v=JSON.parse(localStorage.getItem(k));return v==null?f:v}catch(e){return f}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
@@ -52,6 +52,13 @@ var STAGES=[{k:'new',l:'Nouveau',c:'#8fa39b'},{k:'contact',l:'Contacté',c:'#D5B
 function stC(k){for(var i=0;i<STAGES.length;i++)if(STAGES[i].k===k)return STAGES[i].c;return '#8fa39b'}
 function stL(k){for(var i=0;i<STAGES.length;i++)if(STAGES[i].k===k)return STAGES[i].l;return k}
 function caSum(){return contacts.filter(function(c){return c.stage==='won'}).reduce(function(s,c){return s+(c.amt||0)},0)}
+var SRCS=[{k:'insta',l:'Instagram',i:'📱'},{k:'rue',l:'Rencontre / rue',i:'🚶'},{k:'bao',l:'Bouche-a-oreille',i:'🗣️'},{k:'event',l:'Evenement / salon',i:'🎪'},{k:'site',l:'Site web',i:'🌐'},{k:'autre',l:'Autre',i:'❓'}];
+var TEMPS=[{k:'hot2',l:'Brulant',c:'#d9482f'},{k:'hot',l:'Chaud',c:'#E8954C'},{k:'warm',l:'Tiede',c:'#D5B56F'},{k:'cold',l:'Froid',c:'#8fa39b'},{k:'save',l:'Economise',c:'#4f8fbf'}];
+function srcMeta(k){for(var i=0;i<SRCS.length;i++)if(SRCS[i].k===k)return SRCS[i];return null}
+function tempMeta(k){for(var i=0;i<TEMPS.length;i++)if(TEMPS[i].k===k)return TEMPS[i];return null}
+function ptsForForm(f){f=(f||'').toLowerCase();if(f.indexOf('sensei')>=0)return 15;if(f.indexOf('voyage')>=0)return 8;if(f.indexOf('pack')>=0)return 5;return 2}
+function thisMonth(ts){if(!ts)return false;var d=new Date(ts),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}
+function gradeFor(p){if(p>=100)return'Sensei';if(p>=50)return'Reference';if(p>=25)return'Ambassadrice';if(p>=10)return'Confirmee';return'Recrue'}
 
 /* ================= MARKUP (injecté) ================= */
 var GEN_HTML=''
@@ -130,9 +137,20 @@ var CLOSING_HTML=''
 +'<div class="cs"><div class="n" id="cRdv">0</div><div class="t">RDV planifiés</div></div>'
 +'<div class="cs win"><div class="n" id="cWon">0</div><div class="t">Gagnés</div></div>'
 +'<div class="cs win"><div class="n"><span id="cCa">0</span> €</div><div class="t">CA encaissé</div></div></div>'
++'<div class="comm-box"><div class="comm-head"><h3>Commissions 10 % · sur encaissé</h3><span class="comm-badge" id="comGrade">Recrue</span></div>'
++'<div class="comm-grid"><div class="comm-c"><div class="cv" id="comVentes">0 / 5</div><div class="cl">Ventes ce mois</div></div>'
++'<div class="comm-c ok"><div class="cv" id="comAcquise">0 €</div><div class="cl">Acquise (débloquée)</div></div>'
++'<div class="comm-c wait"><div class="cv" id="comAttente">0 €</div><div class="cl">En attente</div></div>'
++'<div class="comm-c pot"><div class="cv" id="comPotentiel">0 €</div><div class="cl">Potentiel total</div></div></div>'
++'<div class="comm-note">10 % débloqué dès 5 ventes signées dans le mois · Points challenge : <b id="comPoints">0</b></div></div>'
 +'<div class="crm-head" style="margin-bottom:12px"><h2 style="font-size:16px">Pipeline</h2>'
 +'<div class="vtoggle" id="vtoggle"><button class="on" data-v="kanban">▦ Kanban</button><button data-v="list">☰ Liste</button></div>'
-+'<button class="addc" id="addContact">＋ Contact</button></div>'
++'<button class="addc" id="addContact">＋ Prospect</button></div>'
++'<div class="pform" id="prospectForm" style="display:none">'
++'<div class="grid2"><div class="fld"><label>Nom du prospect</label><input id="pfNom" placeholder="Nom Prénom"></div><div class="fld"><label>Téléphone</label><input id="pfTel" placeholder="0690 00 00 00"></div></div>'
++'<div class="grid2"><div class="fld"><label>Formation visée</label><select id="pfForm"></select></div><div class="fld"><label>Montant (€)</label><input id="pfAmt" type="number" placeholder="4900"></div></div>'
++'<div class="grid2"><div class="fld"><label>Source du lead</label><select id="pfSrc"></select></div><div class="fld"><label>Température</label><select id="pfTemp"></select></div></div>'
++'<div class="acts"><button class="btn gold" id="pfCancel">Annuler</button><button class="btn cta" id="pfSave">Enregistrer</button></div></div>'
 +'<div class="kanban" id="kanban"></div>'
 +'<div class="listview" id="listview"><div class="lrow h"><span>Contact</span><span class="formh">Formation</span><span class="telh">Tél</span><span>Statut</span><span>Montant</span><span>Action</span></div><div id="listRows"></div></div>';
 
@@ -294,9 +312,10 @@ function importJSON(e){var f=e.target.files[0];if(!f)return;var r=new FileReader
 /* ================= CLOSING ================= */
 function mountClosing(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=CLOSING_HTML;m._mounted=true;
   byId('addContact').onclick=addContact;
+  var _ps=byId('pfSave');if(_ps)_ps.onclick=saveProspect;var _pc=byId('pfCancel');if(_pc)_pc.onclick=function(){byId('prospectForm').style.display='none'};
   byId('vtoggle').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;$$('#vtoggle button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');var list=b.dataset.v==='list';byId('listview').classList.toggle('on',list);byId('kanban').classList.toggle('off',list)});
   renderClosing()}
-function renderClosing(){var k=byId('kanban');if(!k)return;
+function renderClosing(){var k=byId('kanban');if(!k)return;renderCommissions();
   setText('cTotal',contacts.length);setText('cRdv',contacts.filter(function(c){return c.stage==='rdv'}).length);
   setText('cWon',contacts.filter(function(c){return c.stage==='won'}).length);var ca=byId('cCa');if(ca)countUp(ca,caSum());
   k.innerHTML=STAGES.map(function(st){var items=contacts.filter(function(c){return c.stage===st.k});
@@ -304,7 +323,7 @@ function renderClosing(){var k=byId('kanban');if(!k)return;
   var lr=byId('listRows');if(lr)lr.innerHTML=contacts.map(function(c){return '<div class="lrow"><b>'+esc(c.n)+'</b><span class="form formc">'+esc(c.form)+'</span><span class="telc">'+esc(c.tel||'')+'</span><span class="st" style="background:'+stC(c.stage)+'22;color:'+stC(c.stage)+'">'+stL(c.stage)+'</span><span class="mt">'+nfmt(c.amt)+'€</span><select data-cid="'+c.id+'" class="js-stage">'+STAGES.map(function(s){return '<option value="'+s.k+'"'+(s.k===c.stage?' selected':'')+'>'+s.l+'</option>'}).join('')+'</select></div>'}).join('')}
 function cardHtml(c){var won=c.stage==='won';
   return '<div class="card '+(won?'won':'')+'" data-cid="'+c.id+'"><div class="top"><b>'+esc(c.n)+'</b><span class="mt">'+nfmt(c.amt)+'€</span></div>'
-  +'<div class="form">'+esc(c.form)+'</div><div class="meta"><span class="tel">'+esc(c.tel||'')+'</span></div>'
+  +'<div class="form">'+esc(c.form)+'</div><div class="meta"><span class="tel">'+esc(c.tel||'')+'</span></div>'+badgesHtml(c)
   +'<div class="acts2">'+(won
     ?'<button class="mini gen" data-gen="'+c.id+'">⬇️ Générer le doc</button>'
     :'<button class="mini adv" data-adv="'+c.id+'">Avancer →</button><button class="mini lose" data-lose="'+c.id+'">Perdu</button>')
@@ -319,8 +338,7 @@ function findC(id){for(var i=0;i<contacts.length;i++)if(contacts[i].id==id)retur
 function stageMove(id,dir){var c=findC(id);if(!c)return;var i=ORDER.indexOf(c.stage);if(i<0)i=0;c.stage=ORDER[Math.min(i+dir,ORDER.length-1)];c.ts=Date.now();persistContacts();if(c.stage==='won')toast(c.n+' gagné · +'+nfmt(c.amt)+'€')}
 function setStage(id,st){var c=findC(id);if(!c)return;c.stage=st;c.ts=Date.now();persistContacts()}
 function persistContacts(){save(LS.con,contacts);renderClosing();updateStats()}
-function addContact(){var n=prompt('Nom du contact ?');if(!n)return;var form=prompt('Formation visée ?')||cat.modules[0].n;var amt=parseInt(prompt('Montant (€) ?')||'0')||0;var tel=prompt('Téléphone ?')||'';
-  contacts.unshift({id:'c'+Date.now(),n:n.trim(),tel:tel,form:form,stage:'new',amt:amt,ts:Date.now()});persistContacts();toast('Contact ajouté')}
+function addContact(){var f=byId('prospectForm');if(!f)return;if(f.style.display!=='none'){f.style.display='none';return}fillProspectSelects();f.style.display='block';var nm=byId('pfNom');if(nm)nm.focus()}
 function winGenerate(id){var c=findC(id);if(!c)return;
   var parts=c.n.trim().split(' ');var prenom=parts.shift()||c.n;var nom=parts.join(' ')||prenom;
   var rec={prenom:prenom,nom:nom,adresse:'',formation:c.form,ds:'',de:'',duree:settings.dureeDef,lieu:settings.lieuDef,em:today()};
@@ -355,6 +373,10 @@ function autoInit(){
   updateStats();
 }
 /* API publique (pour les shells) */
+function badgesHtml(c){var h='';var t=tempMeta(c.temp);if(t)h+='<span class="tbadge" style="background:'+t.c+'22;color:'+t.c+'">'+t.l+'</span>';var s=srcMeta(c.src);if(s)h+='<span class="sbadge">'+s.i+' '+s.l+'</span>';return h?'<div class="cbadges">'+h+'</div>':''}
+function fillProspectSelects(){var ff=byId('pfForm');if(ff&&!ff._filled){var all=cat.offers.concat(cat.modules);ff.innerHTML=all.map(function(o){return '<option value="'+esc(o.n)+'">'+esc(o.n)+' — '+nfmt(o.p)+' €</option>'}).join('');ff._filled=1}var fs=byId('pfSrc');if(fs&&!fs._filled){fs.innerHTML=SRCS.map(function(x){return '<option value="'+x.k+'">'+x.i+' '+x.l+'</option>'}).join('');fs._filled=1}var ft=byId('pfTemp');if(ft&&!ft._filled){ft.innerHTML=TEMPS.map(function(x){return '<option value="'+x.k+'">'+x.l+'</option>'}).join('');ft._filled=1}}
+function saveProspect(){var n=((byId('pfNom')||{}).value||'');if(!n.trim()){toast('Nom requis');return}var form=((byId('pfForm')||{}).value)||cat.modules[0].n;var amt=parseInt(((byId('pfAmt')||{}).value)||'0')||0;var tel=((byId('pfTel')||{}).value)||'';var src=((byId('pfSrc')||{}).value)||'autre';var temp=((byId('pfTemp')||{}).value)||'warm';contacts.unshift({id:'c'+Date.now(),n:n.trim(),tel:tel,form:form,stage:'new',amt:amt,ts:Date.now(),src:src,temp:temp});persistContacts();var pf=byId('prospectForm');if(pf)pf.style.display='none';['pfNom','pfTel','pfAmt'].forEach(function(id){var e=byId(id);if(e)e.value=''});toast('Prospect ajouté')}
+function renderCommissions(){var won=contacts.filter(function(c){return c.stage==='won'});var wm=won.filter(function(c){return thisMonth(c.ts)});var caM=wm.reduce(function(s,c){return s+(c.amt||0)},0);var vM=wm.length;var unlocked=vM>=5;var acq=unlocked?Math.round(caM*0.1):0;var att=unlocked?0:Math.round(caM*0.1);var pot=Math.round(caSum()*0.1);var pts=won.reduce(function(s,c){return s+ptsForForm(c.form)},0);setText('comVentes',vM+' / 5');setText('comAcquise',nfmt(acq)+' €');setText('comAttente',nfmt(att)+' €');setText('comPotentiel',nfmt(pot)+' €');setText('comPoints',pts);setText('comGrade',gradeFor(pts))}
 window.MH={mountGenerator:mountGenerator,mountCatalogue:mountCatalogue,mountEleves:mountEleves,mountSettings:mountSettings,mountClosing:mountClosing,
   scaleDocs:scaleDocs,refreshAll:refreshAll,render:render,toast:toast,exportJSON:exportJSON,
   data:function(){return {cat:cat,clients:clients,contacts:contacts,settings:settings,gencount:gencount,ca:caSum()}}};

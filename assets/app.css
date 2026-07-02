@@ -311,3 +311,32 @@ body{background:var(--bgapp)}
   #scr-docs .gen-docs .docwrap{flex:1 1 auto;min-height:0}
   #scr-docs .gen-docs .acts{flex:0 0 auto;margin-top:10px}
 }
+
+/* ===== CRM enrichi (commissions + form prospect + badges) ===== */
+.comm-box{background:linear-gradient(135deg,#F1F6F3,#fff);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px}
+.comm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+.comm-head h3{font-family:var(--serif);font-size:15px;color:var(--green);font-weight:600}
+.comm-badge{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--gold-d);background:var(--gold-soft);padding:5px 12px;border-radius:999px}
+.comm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.comm-c{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px}
+.comm-c .cv{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink)}
+.comm-c .cl{font-size:10.5px;color:var(--muted);margin-top:2px}
+.comm-c.ok .cv{color:#3fae78}
+.comm-c.wait .cv{color:var(--orange)}
+.comm-c.pot .cv{color:var(--gold-d)}
+.comm-note{font-size:11.5px;color:var(--ink2);margin-top:11px;line-height:1.4}
+.comm-note b{color:var(--green)}
+.pform{background:var(--green-soft2);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.cbadges{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.tbadge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px}
+.sbadge{font-size:10px;font-weight:600;color:var(--ink2);background:var(--green-soft);padding:3px 8px;border-radius:999px}
+@media(max-width:600px){.comm-grid{grid-template-columns:1fr 1fr}}
+
+/* ===== Bandeau autorité ===== */
+.authbar{margin-top:6px;background:linear-gradient(135deg,#13503f,#0B3A30);border-radius:20px;padding:20px 22px;color:#fff;box-shadow:var(--shadow-s)}
+.authbar .an{display:flex;flex-wrap:wrap;gap:26px;align-items:baseline}
+.authbar .ai{display:flex;flex-direction:column}
+.authbar .ai b{font-family:var(--serif);font-size:22px;color:var(--gold);font-weight:700;line-height:1}
+.authbar .ai span{font-size:11px;color:rgba(255,255,255,.7);margin-top:3px}
+.authbar .aq{margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.12);font-size:11.5px;color:rgba(255,255,255,.82);line-height:1.5}
+.authbar .aq b{color:#fff}
