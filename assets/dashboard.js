@@ -23,6 +23,8 @@
   function monthKeys(n){var out=[],now=new Date();for(var i=n-1;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);out.push({y:d.getFullYear(),m:d.getMonth(),label:MS[d.getMonth()]});}return out}
   function sameM(ts,k){if(!ts)return false;var d=new Date(ts);return d.getFullYear()===k.y&&d.getMonth()===k.m}
   function initials(p,n){var a=(p||'').trim(),b=(n||'').trim();var s=((a?a[0]:'')+(b?b[0]:'')).toUpperCase();return s||'·'}
+  function keyName(c){if(window.MH&&window.MH.normName)return window.MH.normName(c.prenom,c.nom);return ((c.prenom||'')+' '+(c.nom||'')).toLowerCase().trim()}
+  function uniqueEleves(list){var seen={},n=0;(list||[]).forEach(function(c){var k=keyName(c);if(!seen[k]){seen[k]=1;n++}});return n}
 
   function destroy(id){if(charts[id]){try{charts[id].destroy()}catch(e){}charts[id]=null}}
   function make(id,cfg){var c=byId(id);if(!c||!window.Chart)return;destroy(id);charts[id]=new window.Chart(c.getContext('2d'),cfg)}
@@ -36,7 +38,7 @@
 
     /* ---- KPI ---- */
     if(byId('kpiDocs'))byId('kpiDocs').textContent=nfmt(d.gencount||0);
-    if(byId('kpiElv'))byId('kpiElv').textContent=nfmt(clients.length);
+    if(byId('kpiElv'))byId('kpiElv').textContent=nfmt(uniqueEleves(clients));
     if(byId('kpiCa'))byId('kpiCa').textContent=euro(d.ca||0);
 
     /* ---- Prochaine session (sidebar) ---- */
@@ -67,7 +69,7 @@
     /* ---- Graphe barres : élèves / mois ---- */
     var keys=monthKeys(6);
     var labels=keys.map(function(k){return k.label});
-    var elvByMonth=keys.map(function(k){return clients.filter(function(c){return sameM(c.ts,k)}).length});
+    var elvByMonth=keys.map(function(k){var seen={};clients.forEach(function(c){if(sameM(c.ts,k))seen[keyName(c)]=1});return Object.keys(seen).length});
     make('chartBars',{
       type:'bar',
       data:{labels:labels,datasets:[{label:'Élèves',data:elvByMonth,backgroundColor:'#C9A85F',hoverBackgroundColor:'#B79750',borderRadius:7,maxBarThickness:34}]},
