@@ -54,7 +54,8 @@
         tb.innerHTML='<tr><td colspan="4" class="empty-td"><div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><b>Aucun document généré</b><span>Crée ton premier certificat ou attestation via le bouton +.</span></div></td></tr>';
       }else{
         tb.innerHTML=rows.map(function(c){
-          return '<tr><td><div class="who"><div class="av">'+esc(initials(c.prenom,c.nom))+'</div>'+
+          var fk=window.MH&&window.MH.normName?window.MH.normName(c.prenom,c.nom):'';
+          return '<tr class="row-click" data-openfiche="'+fk+'"><td><div class="who"><div class="av">'+esc(initials(c.prenom,c.nom))+'</div>'+
             '<b>'+esc(c.prenom)+' '+esc((c.nom||'').toUpperCase())+'</b></div></td>'+
             '<td>'+esc(c.formation||'—')+'</td>'+
             '<td class="hide-sm">'+fmtD(c.em)+'</td>'+
@@ -89,6 +90,15 @@
   }
 
   function resize(){for(var k in charts){if(charts[k]){try{charts[k].resize()}catch(e){}}}}
+
+  document.addEventListener('click',function(e){
+    var row=e.target.closest&&e.target.closest('[data-openfiche]');
+    if(row){
+      var fk=row.getAttribute('data-openfiche');if(!fk)return;
+      if(window.__showScr)window.__showScr('elv');
+      setTimeout(function(){if(window.MH&&window.MH.openFiche)window.MH.openFiche(fk)},80);
+    }
+  });
 
   window.MHdash={render:render,resize:resize};
 
