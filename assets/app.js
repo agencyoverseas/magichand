@@ -119,7 +119,10 @@ var CATALOGUE_HTML=''
 
 var ELEVES_HTML=''
 +'<div class="clients-bar"><input id="cliSearch" placeholder="Rechercher un élève…"><button class="btn gold" id="cliExport" style="flex:0 0 auto;min-width:130px">⬇️ Export CSV</button></div>'
-+'<div class="lst" id="cliList"></div>';
++'<div class="filters-bar"><select id="cliFiltForm"><option value="">Toutes formations</option></select>'
++'<select id="cliFiltSort"><option value="recent">Plus récents</option><option value="old">Plus anciens</option><option value="az">A → Z</option></select></div>'
++'<div class="lst" id="cliList"></div>'
++'<input type="file" id="avUpInput" accept="image/*" style="display:none">';
 
 var SETTINGS_HTML=''
 +'<div class="subttl">👤 Identité des documents</div>'
@@ -222,7 +225,7 @@ function captureNode(srcId,w,h){
 }
 function guard(){if(!val('prenom')||!val('nom')){toast('Prénom et nom requis');return false}return true}
 function slug(){return ((val('nom')+'_'+val('prenom'))||'document').replace(/[^\w\-]+/g,'_')}
-function busy(btn,fn){var t=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ Génération…';
+function busy(btn,fn){var t=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Génération…';
   Promise.resolve().then(fn).then(function(){},function(e){console.error(e);toast('Erreur : '+(e&&e.message||e))}).then(function(){btn.disabled=false;btn.innerHTML=t})}
 function jpdf(){return new window.jspdf.jsPDF(arguments[0])}
 function pdf(kind,btn){if(!guard())return;busy(btn,function(){
@@ -250,14 +253,48 @@ document.addEventListener('click',function(e){var del=e.target.closest&&e.target
 
 /* ================= ÉLÈVES ================= */
 function mountEleves(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=ELEVES_HTML;m._mounted=true;
-  byId('cliSearch').oninput=function(e){renderClients(e.target.value)};
-  byId('cliExport').onclick=exportCsv;renderClients()}
-function renderClients(filter){
-  if(filter==null){var cs=byId('cliSearch');filter=cs?cs.value:''}
-  var f=String(filter).toLowerCase();
-  var rows=clients.filter(function(c){return (c.nom+' '+c.prenom+' '+c.formation).toLowerCase().indexOf(f)>=0}).sort(function(a,b){return b.ts-a.ts});
-  var html=rows.length?rows.map(function(c){return '<div class="cl"><div class="ci"><b>'+esc(c.prenom)+' '+esc((c.nom||'').toUpperCase())+'</b><span>'+esc(c.formation)+' · '+(c.ds?'du '+fmt(c.ds)+' au '+fmt(c.de):'—')+' · émis '+fmt(c.em)+'</span></div><button class="icon-btn add" title="Recharger" data-load="'+c.id+'">↺</button><button class="icon-btn" data-cdel="'+c.id+'">🗑</button></div>'}).join(''):'<div class="empty">Aucun élève pour le moment.</div>';
+  fillEleveFilters();
+  byId('cliSearch').oninput=function(){renderClients()};
+  byId('cliFiltForm').onchange=function(){renderClients()};
+  byId('cliFiltSort').onchange=function(){renderClients()};
+  byId('cliExport').onclick=exportCsv;
+  byId('avUpInput').onchange=function(e){onAvatarPicked(e)};
+  renderClients()}
+function fillEleveFilters(){var sel=byId('cliFiltForm');if(!sel)return;var cur=sel.value;
+  var forms=[];clients.forEach(function(c){if(c.formation&&forms.indexOf(c.formation)<0)forms.push(c.formation)});
+  sel.innerHTML='<option value="">Toutes formations</option>'+forms.map(function(f){return '<option>'+esc(f)+'</option>'}).join('');
+  sel.value=cur}
+function renderClients(){
+  var q=(byId('cliSearch')?byId('cliSearch').value:'').toLowerCase();
+  var ff=byId('cliFiltForm')?byId('cliFiltForm').value:'';
+  var sort=byId('cliFiltSort')?byId('cliFiltSort').value:'recent';
+  var rows=clients.filter(function(c){
+    var okQ=(c.nom+' '+c.prenom+' '+c.formation).toLowerCase().indexOf(q)>=0;
+    var okF=!ff||c.formation===ff;
+    return okQ&&okF;
+  });
+  rows=rows.slice().sort(function(a,b){
+    if(sort==='old')return (a.ts||0)-(b.ts||0);
+    if(sort==='az')return (a.nom||'').localeCompare(b.nom||'');
+    return (b.ts||0)-(a.ts||0);
+  });
+  var html=rows.length?rows.map(function(c){
+    var initials=((c.prenom||'')[0]||'')+((c.nom||'')[0]||'');
+    var avInner=c.avatar?'<img src="'+c.avatar+'" alt="">':esc(initials.toUpperCase());
+    return '<div class="cl"><div class="av" data-avid="'+c.id+'">'+avInner+'<input type="file" accept="image/*" class="av-up" data-avpick="'+c.id+'"></div>'
+      +'<div class="ci"><b>'+esc(c.prenom)+' '+esc((c.nom||'').toUpperCase())+'</b><span>'+esc(c.formation)+' · '+(c.ds?'du '+fmt(c.ds)+' au '+fmt(c.de):'—')+' · émis '+fmt(c.em)+'</span></div>'
+      +'<span class="pill ok">Émis</span>'
+      +'<button class="icon-btn add" title="Recharger" data-load="'+c.id+'">↺</button><button class="icon-btn" data-cdel="'+c.id+'">🗑</button></div>';
+  }).join(''):emptyEleves();
   setHTML('#cliList',html)}
+function emptyEleves(){return '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg><b>Aucun élève pour l\'instant</b><span>Génère ton premier document pour voir apparaître un élève ici.</span></div>'}
+function onAvatarPicked(e){var f=e.target.files[0];if(!f)return;var id=e.target._forId;if(!id)return;
+  var r=new FileReader();r.onload=function(){var c=null;clients.forEach(function(x){if(x.id==id)c=x});if(c){c.avatar=r.result;save(LS.cli,clients);renderClients()}};r.readAsDataURL(f);e.target.value=''}
+document.addEventListener('click',function(e){
+  var avd=e.target.closest&&e.target.closest('[data-avid]');
+  if(avd&&e.target.tagName!=='INPUT'){var inp=avd.querySelector('[data-avpick]');if(inp){inp._forId=avd.getAttribute('data-avid');inp.click()}return}
+});
+document.addEventListener('change',function(e){var p=e.target.closest&&e.target.closest('[data-avpick]');if(p){p._forId=p.getAttribute('data-avpick');onAvatarPicked(e)}});
 document.addEventListener('click',function(e){
   var ld=e.target.closest&&e.target.closest('[data-load]');if(ld){loadClient(ld.dataset.load);return}
   var cd=e.target.closest&&e.target.closest('[data-cdel]');if(cd){clients=clients.filter(function(x){return x.id!=cd.dataset.cdel});save(LS.cli,clients);renderClients();updateStats();return}});
@@ -268,7 +305,7 @@ function setIf(id,v){var e=byId(id);if(e)e.value=v}
 function saveClient(){var pre=val('prenom'),no=val('nom');if(!pre||!no)return;
   var rec={id:Date.now()+''+Math.floor(Math.random()*99),ts:Date.now(),prenom:pre,nom:no,adresse:val('adresse'),formation:val('formation'),ds:val('dstart'),de:val('dend'),duree:val('duree'),lieu:val('lieu'),em:val('demit')};
   var dup=null;clients.forEach(function(c){if(c.nom.toLowerCase()===rec.nom.toLowerCase()&&c.prenom.toLowerCase()===rec.prenom.toLowerCase()&&c.formation===rec.formation)dup=c});
-  if(dup)Object.assign(dup,rec);else clients.unshift(rec);save(LS.cli,clients);renderClients();updateStats()}
+  if(dup)Object.assign(dup,rec);else clients.unshift(rec);save(LS.cli,clients);fillEleveFilters();renderClients();updateStats()}
 function exportCsv(){if(!clients.length)return toast('Base vide');
   var head=['Prénom','Nom','Formation','Du','Au','Durée','Lieu','Émission','Adresse'];
   var rows=clients.map(function(c){return [c.prenom,c.nom,c.formation,c.ds,c.de,c.duree,c.lieu,c.em,c.adresse].map(function(v){return '"'+(v||'').replace(/"/g,'""')+'"'}).join(',')});

@@ -51,14 +51,14 @@
     if(tb){
       var rows=clients.slice().sort(function(a,b){return (b.ts||0)-(a.ts||0)}).slice(0,6);
       if(!rows.length){
-        tb.innerHTML='<tr><td colspan="4" class="empty-td">Aucun document généré pour le moment.</td></tr>';
+        tb.innerHTML='<tr><td colspan="4" class="empty-td"><div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><b>Aucun document généré</b><span>Crée ton premier certificat ou attestation via le bouton +.</span></div></td></tr>';
       }else{
         tb.innerHTML=rows.map(function(c){
           return '<tr><td><div class="who"><div class="av">'+esc(initials(c.prenom,c.nom))+'</div>'+
             '<b>'+esc(c.prenom)+' '+esc((c.nom||'').toUpperCase())+'</b></div></td>'+
             '<td>'+esc(c.formation||'—')+'</td>'+
             '<td class="hide-sm">'+fmtD(c.em)+'</td>'+
-            '<td><span class="pill">PDF</span></td></tr>';
+            '<td><span class="pill ok">Émis</span></td></tr>';
         }).join('');
       }
     }
@@ -85,16 +85,6 @@
       options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
         plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,font:{size:11},color:'#566a62',padding:12}},
           tooltip:{enabled:hasAny,backgroundColor:'#0F4A3C'}}}
-    });
-
-    /* ---- Courbe : CA encaissé / mois ---- */
-    var caByMonth=keys.map(function(k){return contacts.filter(function(c){return c.stage==='won'&&sameM(c.ts,k)}).reduce(function(s,c){return s+(c.amt||0)},0)});
-    make('chartLine',{
-      type:'line',
-      data:{labels:labels,datasets:[{label:'CA',data:caByMonth,borderColor:'#0F4A3C',backgroundColor:'rgba(15,74,60,.10)',fill:true,tension:.4,borderWidth:2.5,pointBackgroundColor:'#C9A85F',pointBorderColor:'#0F4A3C',pointRadius:4,pointHoverRadius:6}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{backgroundColor:'#0F4A3C',callbacks:{label:function(ctx){return euro(ctx.parsed.y)}}}},
-        scales:{x:{grid:{display:false},ticks:TICK},y:{beginAtZero:true,grid:GRID,ticks:Object.assign({callback:function(v){return v>=1000?(v/1000)+'k':v}},TICK)}}}
     });
   }
 

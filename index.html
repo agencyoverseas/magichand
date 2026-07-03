@@ -2,14 +2,34 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Magic Hands School — Studio de documents</title>
+<meta name="theme-color" content="#0F4A3C">
 <script>window.MH_ASSETS={certBg:'assets/cert-bg.png',attBg:'assets/attest-bg.png',sign:'assets/sign.jpg',logoMi:'assets/logo-mi.png',logoFull:'assets/logo-full.png'};</script>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
-<!-- ===== SIDEBAR ===== -->
+<!-- ===== ICONS (sprite masqué, réutilisé partout) ===== -->
+<svg width="0" height="0" style="position:absolute">
+<defs>
+<symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></symbol>
+<symbol id="ic-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></symbol>
+<symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></symbol>
+<symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.2"/><path d="M2 21v-1.5A5.5 5.5 0 017.5 14h3A5.5 5.5 0 0116 19.5V21"/><path d="M16.5 3.6a3.2 3.2 0 010 6.9"/><path d="M22 21v-1.3a5 5 0 00-3.5-4.8"/></symbol>
+<symbol id="ic-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 8l-5 5-3-3-5 5"/></symbol>
+<symbol id="ic-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+<symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9z"/><path d="M10 21a2 2 0 004 0"/></symbol>
+<symbol id="ic-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+<symbol id="ic-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+<symbol id="ic-euro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></symbol>
+<symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></symbol>
+<symbol id="ic-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></symbol>
+</defs>
+</svg>
+
+<!-- ===== SIDEBAR (desktop) ===== -->
 <aside class="side" id="side">
   <div class="side-brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · NexusAI</span></div></div>
   <div class="side-prof">
@@ -17,29 +37,43 @@
     <b>Magic Hands</b><span>Studio de documents</span>
   </div>
   <nav class="side-nav">
-    <button class="snav on" data-scr="home"><span class="si">◳</span>Tableau de bord</button>
-    <button class="snav" data-scr="docs"><span class="si">📄</span>Documents</button>
-    <button class="snav" data-scr="cat"><span class="si">📚</span>Catalogue</button>
-    <button class="snav" data-scr="elv"><span class="si">👥</span>Élèves</button>
-    <button class="snav" data-scr="close"><span class="si">📈</span>Closing</button>
-    <button class="snav" data-scr="acc"><span class="si">⚙️</span>Compte</button>
+    <button class="snav on" data-scr="home"><span class="si"><svg><use href="#ic-home"/></svg></span><span class="lbl">Tableau de bord</span></button>
+    <button class="snav" data-scr="docs"><span class="si"><svg><use href="#ic-doc"/></svg></span><span class="lbl">Documents</span></button>
+    <button class="snav" data-scr="cat"><span class="si"><svg><use href="#ic-book"/></svg></span><span class="lbl">Catalogue</span></button>
+    <button class="snav" data-scr="elv"><span class="si"><svg><use href="#ic-users"/></svg></span><span class="lbl">Élèves</span></button>
+    <button class="snav" data-scr="close"><span class="si"><svg><use href="#ic-chart"/></svg></span><span class="lbl">Closing</span></button>
+    <button class="snav" data-scr="acc"><span class="si"><svg><use href="#ic-gear"/></svg></span><span class="lbl">Compte</span></button>
   </nav>
   <div class="side-foot"><div class="fl">Prochaine session</div><b id="sideNextL">—</b><small id="sideNextD"></small></div>
 </aside>
-<div class="scrim" id="scrim"></div>
+
+<!-- ===== "Plus" bottom-sheet (mobile : Catalogue + Closing) ===== -->
+<div class="plussheet-bg" id="plusBg"></div>
+<div class="plussheet" id="plusSheet" style="display:none">
+  <div class="grab"></div>
+  <button class="plus-item" data-scr="cat" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-book"/></svg></span><b>Catalogue</b></button>
+  <button class="plus-item" data-scr="close" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-chart"/></svg></span><b>Closing</b></button>
+</div>
 
 <!-- ===== MAIN ===== -->
 <main class="main" id="main">
 
   <header class="appbar">
-    <button class="burger" id="burger" aria-label="Menu">☰</button>
+    <button class="abtn" id="btnPlus" aria-label="Plus"><svg><use href="#ic-more"/></svg></button>
     <div class="brand"><img src="assets/logo-full.png" alt=""><div class="bt"><b>Magic Hands</b><span>Studio</span></div></div>
-    <span class="syncdot off" id="syncDot" style="margin-left:auto" title="Local">●</span>
+    <div class="notifwrap" style="margin-left:auto">
+      <button class="abtn" id="btnBell" aria-label="Notifications"><svg><use href="#ic-bell"/></svg><span class="dot" id="bellDot" style="display:none"></span></button>
+      <div class="notifpanel" id="notifPanel"><h4>Notifications</h4><div id="notifList"></div></div>
+    </div>
   </header>
 
   <div class="mhead">
-    <div class="ht"><h2 id="mhTitle">Tableau de bord</h2><p id="mhSub">Vue d’ensemble · Magic Hands</p></div>
+    <div class="ht"><h2 id="mhTitle">Tableau de bord</h2><p id="mhSub">Vue d'ensemble · Magic Hands</p></div>
     <div style="display:flex;align-items:center;gap:12px">
+      <div class="notifwrap">
+        <button class="abtn" id="btnBellD" aria-label="Notifications"><svg><use href="#ic-bell"/></svg><span class="dot" id="bellDotD" style="display:none"></span></button>
+        <div class="notifpanel" id="notifPanelD"><h4>Notifications</h4><div id="notifListD"></div></div>
+      </div>
       <button class="btn cta" data-scr="docs" style="min-width:0;flex:0 0 auto;padding:11px 18px">+ Nouveau document</button>
       <div class="syncwrap"><span class="syncdot off" id="syncDotD" title="Local">●</span><span id="syncTxt">Local</span></div>
     </div>
@@ -48,28 +82,24 @@
   <!-- ===== TABLEAU DE BORD ===== -->
   <section class="scr on" id="scr-home">
     <div class="kpis">
-      <div class="kpi gold"><span class="ki">📄</span><div class="kl">Documents générés</div><div class="kv" id="kpiDocs">0</div></div>
-      <div class="kpi green"><span class="ki">👥</span><div class="kl">Élèves</div><div class="kv" id="kpiElv">0</div></div>
-      <div class="kpi cream"><span class="ki">💶</span><div class="kl">CA encaissé</div><div class="kv" id="kpiCa">0 €</div></div>
-    </div>
-    <div class="panels">
-      <div class="panel">
-        <div class="ph"><h3>Derniers documents</h3><span class="sub">élèves récents</span></div>
-        <table class="dtable"><thead><tr><th>Élève</th><th>Formation</th><th class="hide-sm">Émis le</th><th>Type</th></tr></thead><tbody id="recentDocs"></tbody></table>
-      </div>
-      <div class="panel">
-        <div class="ph"><h3>Statistiques</h3><span class="sub">élèves / mois</span></div>
-        <div class="chartbox"><canvas id="chartBars"></canvas></div>
-      </div>
+      <div class="kpi gold"><span class="ki"><svg><use href="#ic-doc"/></svg></span><div class="kl">Documents générés</div><div class="kv" id="kpiDocs">0</div></div>
+      <div class="kpi green"><span class="ki"><svg><use href="#ic-users"/></svg></span><div class="kl">Élèves</div><div class="kv" id="kpiElv">0</div></div>
+      <div class="kpi cream"><span class="ki"><svg><use href="#ic-euro"/></svg></span><div class="kl">CA encaissé</div><div class="kv" id="kpiCa">0 €</div></div>
     </div>
     <div class="panels eq">
+      <div class="panel">
+        <div class="ph"><h3>Élèves / mois</h3><span class="sub">6 derniers mois</span></div>
+        <div class="chartbox sm"><canvas id="chartBars"></canvas></div>
+      </div>
       <div class="panel">
         <div class="ph"><h3>Pipeline</h3><span class="sub">répartition closing</span></div>
         <div class="chartbox sm"><canvas id="chartDonut"></canvas></div>
       </div>
+    </div>
+    <div class="panels full">
       <div class="panel">
-        <div class="ph"><h3>Évolution du CA</h3><span class="sub">par mois (€)</span></div>
-        <div class="chartbox sm"><canvas id="chartLine"></canvas></div>
+        <div class="ph"><h3>Derniers documents</h3><span class="sub">élèves récents</span></div>
+        <table class="dtable"><thead><tr><th>Élève</th><th>Formation</th><th class="hide-sm">Émis le</th><th>Statut</th></tr></thead><tbody id="recentDocs"></tbody></table>
       </div>
     </div>
     <div class="authbar">
@@ -79,12 +109,12 @@
         <div class="ai"><b>8</b><span>certifications · 1 pack</span></div>
         <div class="ai"><b>QUA008153</b><span>Qualiopi certifiée</span></div>
       </div>
-      <div class="aq"><b>Vu dans</b> · France 2 · INSEP · JO Paris 2024 · Nike · Dior · Loewe · Miss France</div>
     </div>
   </section>
 
   <!-- ===== DOCUMENTS ===== -->
   <section class="scr" id="scr-docs">
+    <div class="sheet-close"><button class="x" data-scr="home"><svg><use href="#ic-close"/></svg></button><b>Nouveau document</b></div>
     <div class="card-sec"><div data-mount="generator"></div></div>
   </section>
 
@@ -111,10 +141,18 @@
 
 </main>
 
+<!-- ===== BOTTOM NAV (mobile) ===== -->
+<nav class="bottomnav" id="bottomnav">
+  <button class="nitem on" data-scr="home"><svg><use href="#ic-home"/></svg><span>Accueil</span></button>
+  <button class="nitem" data-scr="docs"><svg><use href="#ic-doc"/></svg><span>Docs</span></button>
+  <div class="fab-wrap"><button class="fab-btn" data-scr="docs" aria-label="Nouveau document"><svg><use href="#ic-plus"/></svg></button></div>
+  <button class="nitem" data-scr="elv"><svg><use href="#ic-users"/></svg><span>Élèves</span></button>
+  <button class="nitem" data-scr="acc"><svg><use href="#ic-gear"/></svg><span>Compte</span></button>
+</nav>
+
 <div class="toast" id="toast"></div>
 
 <script>
-/* nav — défini AVANT app.js (app.js appelle window.MHgoGenerate) */
 (function(){
   var TITLES={
     home:['Tableau de bord','Vue d’ensemble · Magic Hands'],
@@ -125,14 +163,15 @@
     acc:['Compte','Synchronisation & réglages']
   };
   function byId(id){return document.getElementById(id)}
-  function closeDrawer(){var s=byId('side'),sc=byId('scrim');if(s)s.classList.remove('open');if(sc)sc.classList.remove('show')}
+  function closePlus(){var b=byId('plusBg'),s=byId('plusSheet');if(b)b.classList.remove('show');if(s)s.style.display='none'}
+  function closeNotif(){['notifPanel','notifPanelD'].forEach(function(id){var p=byId(id);if(p)p.classList.remove('show')})}
   function showScr(name){
-    var nav=document.querySelectorAll('.snav');
+    var nav=document.querySelectorAll('.snav,.nitem');
     for(var i=0;i<nav.length;i++)nav[i].classList.toggle('on',nav[i].getAttribute('data-scr')===name);
     var ss=document.querySelectorAll('.scr');
     for(var j=0;j<ss.length;j++)ss[j].classList.toggle('on',ss[j].id==='scr-'+name);
     var t=TITLES[name]; if(t){var a=byId('mhTitle'),b=byId('mhSub'); if(a)a.textContent=t[0]; if(b)b.textContent=t[1];}
-    closeDrawer();
+    closePlus();closeNotif();
     if(name==='docs')requestAnimationFrame(mhDocsFit);
     if(name==='home'&&window.MHdash&&window.MHdash.render)window.MHdash.render();
     var m=byId('main'); if(m)m.scrollTo?m.scrollTo({top:0,behavior:'smooth'}):m.scrollTop=0;
@@ -147,10 +186,15 @@
       var bar=document.createElement('div'); bar.className='doctabs';
       bar.innerHTML='<button type="button" class="doctab on" data-i="0">Certificat</button><button type="button" class="doctab" data-i="1">Attestation</button>';
       gd.insertBefore(bar,stages[0]); stages[1].classList.add('hide');
-      bar.addEventListener('click',function(e){var btn=e.target.closest('.doctab'); if(!btn)return;
-        var bs=bar.querySelectorAll('.doctab'); for(var k=0;k<bs.length;k++)bs[k].classList.remove('on'); btn.classList.add('on');
-        var i=+btn.getAttribute('data-i'); stages[0].classList.toggle('hide',i!==0); stages[1].classList.toggle('hide',i!==1);
-        requestAnimationFrame(mhDocsScale);});
+      var touchX=null;
+      bar.addEventListener('click',function(e){var btn=e.target.closest('.doctab'); if(!btn)return; switchTab(+btn.getAttribute('data-i'))});
+      gd.addEventListener('touchstart',function(e){touchX=e.touches[0].clientX},{passive:true});
+      gd.addEventListener('touchend',function(e){if(touchX==null)return;var dx=e.changedTouches[0].clientX-touchX;touchX=null;
+        var cur=bar.querySelector('.doctab.on'); var i=+cur.getAttribute('data-i');
+        if(dx<-40&&i===0)switchTab(1); else if(dx>40&&i===1)switchTab(0);});
+      function switchTab(i){var bs=bar.querySelectorAll('.doctab'); for(var k=0;k<bs.length;k++)bs[k].classList.toggle('on',+bs[k].getAttribute('data-i')===i);
+        stages[0].classList.toggle('hide',i!==0); stages[1].classList.toggle('hide',i!==1);
+        requestAnimationFrame(mhDocsScale);}
     }
     setHead(); mhDocsScale();
   }
@@ -160,7 +204,7 @@
     var desktop=window.matchMedia?window.matchMedia('(min-width:981px)').matches:(window.innerWidth>=981);
     var tabs=gd.querySelector('.doctabs'), acts=gd.querySelector('.acts');
     var vis=gd.querySelector('.stage:not(.hide)'), capH=0; if(vis){var cap=vis.querySelector('.cap'); if(cap)capH=cap.offsetHeight;}
-    var avail = desktop ? (gd.clientHeight-(tabs?tabs.offsetHeight:0)-(acts?acts.offsetHeight:0)-capH-22) : Math.round(window.innerHeight*0.70);
+    var avail = desktop ? (gd.clientHeight-(tabs?tabs.offsetHeight:0)-(acts?acts.offsetHeight:0)-capH-22) : Math.round(window.innerHeight*0.62);
     if(avail<160)avail=160;
     var a=byId('wrapCert'),b=byId('wrapAtt');
     if(a)a.setAttribute('data-maxh',avail); if(b)b.setAttribute('data-maxh',avail);
@@ -177,15 +221,24 @@
     if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===name){sel.value=name;break}}
       if(window.MH&&window.MH.render)window.MH.render();}
   }
-  /* burger / scrim */
+  /* clics globaux : plus-sheet, notif, nav */
   document.addEventListener('click',function(e){
-    if(e.target.closest('#burger')){var s=byId('side'),sc=byId('scrim');if(s)s.classList.toggle('open');if(sc)sc.classList.toggle('show');return}
-    if(e.target.closest('#scrim')){closeDrawer();return}
+    if(e.target.closest('#btnPlus')){var s=byId('plusSheet'),b=byId('plusBg');if(s)s.style.display='block';if(b)b.classList.add('show');return}
+    if(e.target.closest('#plusBg')){closePlus();return}
+    if(e.target.closest('#btnBell')||e.target.closest('#btnBellD')){
+      var isD=!!e.target.closest('#btnBellD');
+      var p=byId(isD?'notifPanelD':'notifPanel');
+      var open=p&&p.classList.contains('show');
+      closeNotif();
+      if(p&&!open)p.classList.add('show');
+      return;
+    }
+    if(!e.target.closest('.notifwrap'))closeNotif();
     var sv=e.target.closest('[data-scr]'); if(sv){showScr(sv.getAttribute('data-scr'));return}
     var g=e.target.closest('[data-go]'); if(g){showScr(g.getAttribute('data-go'));return}
     var f=e.target.closest('[data-form]'); if(f){pickFormation(f.getAttribute('data-form'));return}
   });
-  /* miroir badge sync : #syncDot (réel) -> #syncDotD + #syncTxt (desktop) */
+  /* miroir badge sync */
   function mirror(){var src=byId('syncDot'),dst=byId('syncDotD'),tx=byId('syncTxt');if(src&&dst){dst.className=src.className;dst.title=src.title;}if(src&&tx){tx.textContent=src.title||'Local';}}
   document.addEventListener('DOMContentLoaded',function(){
     var src=byId('syncDot');
@@ -202,5 +255,6 @@
 <script src="assets/lib/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="assets/sync.js"></script>
+<script src="assets/notif.js"></script>
 </body>
 </html>
