@@ -48,6 +48,9 @@ function traduire(m){
   if(/feuille_cloturee/.test(m))  return 'Feuille clôturée';
   if(/ligne_inconnue/.test(m))    return 'Ligne introuvable';
   if(/case_non_signee/.test(m))   return 'Cette case n\'est pas encore signée';
+  if(/case_absente/.test(m))      return 'Cette case est marquée absente par la formatrice';
+  if(/lien_obsolete/.test(m))     return 'Ancien lien : demande le nouveau à ta formatrice';
+  if(/feuille_inconnue/.test(m))  return 'Feuille introuvable';
   if(/signature_invalide/.test(m))return 'Signature vide ou trop lourde';
   if(/slot_invalide/.test(m))     return 'Créneau invalide';
   if(/Failed to fetch|NetworkError/i.test(m)) return 'Pas de réseau';
@@ -73,6 +76,7 @@ var admin = {
             return rpc('mh_em_validate', {p_ws:ws(), p_code:getCode(), p_id:id,
               p_ligne:ligne, p_slot:slot, p_on:(on === undefined ? true : !!on)});
           },
+  lienEleve:function(eleveId){ return rpc('mh_el_token', {p_ws:ws(), p_code:getCode(), p_eleve_id:eleveId}); },
   stateGet:function(){ return rpc('mh_state_get', {p_ws:ws(), p_code:getCode()}); },
   statePut:function(d){ return rpc('mh_state_put', {p_ws:ws(), p_code:getCode(), p_data:d}); },
   stateRev:function(){ return rpc('mh_state_rev', {p_ws:ws(), p_code:getCode()}); }
@@ -80,10 +84,12 @@ var admin = {
 
 /* ---------- API publique (élève, par token) ---------- */
 var eleve = {
-  get:  function(token){ return rpc('mh_em_get', {p_token:token}); },
-  sign: function(token, ligne, slot, img, pts){
-          return rpc('mh_em_sign', {p_token:token, p_ligne:ligne, p_slot:slot,
-            p_img:img, p_pts:pts || [], p_ua:(navigator.userAgent || '').slice(0,300)});
+  /* v2 : un seul lien par élève -> toutes ses feuilles */
+  get:  function(token){ return rpc('mh_el_get', {p_token:token}); },
+  sign: function(token, feuilleId, ligne, slot, img, pts){
+          return rpc('mh_el_sign', {p_token:token, p_feuille:feuilleId, p_ligne:ligne,
+            p_slot:slot, p_img:img, p_pts:pts || [],
+            p_ua:(navigator.userAgent || '').slice(0,300)});
         }
 };
 

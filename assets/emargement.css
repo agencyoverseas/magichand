@@ -213,3 +213,42 @@
   .em-panel{width:100%;box-shadow:none;transform:none}
   .em-sheet{box-shadow:none;transform:none !important;width:100%}
 }
+
+/* ============================================================
+   v2 — absences, signature formateur par case, barre d'actions
+   ============================================================ */
+.c-sig .motif{display:block;font-style:normal;font-size:8.5px;color:#9a6a5f;margin-top:1px}
+.c-sig.tosign{background:#f4f2ec;cursor:pointer}
+.c-sig.tosign .mut{font-size:9px;color:#9aa9a3;letter-spacing:.04em}
+.c-sig.tosign:hover{background:#eae6db}
+.c-sig.vide{cursor:pointer}
+.em-logo.vide{display:flex;align-items:center;justify-content:center;width:150px;height:78px;
+  border:1px dashed #cfc7b6;border-radius:4px;color:#a99f8c;font-size:11px;cursor:pointer}
+.em-menu .acts.col{display:flex;flex-direction:column;gap:8px}
+.em-menu .acts.col .btn{width:100%;min-width:0}
+
+/* barre d'actions : 3 boutons + menu (mobile) / tout visible (PC) */
+.em-acts{flex-direction:column;align-items:stretch}
+.em-acts .ac-main{display:flex;gap:8px;align-items:center}
+.em-acts .ac-main .btn{flex:1 1 0;min-width:0}
+.em-acts .ac-burger{flex:0 0 46px}
+.em-acts .ac-rest{display:none;flex-wrap:wrap;gap:8px;margin-top:8px}
+.em-acts.open .ac-rest{display:flex}
+.em-acts.open .ac-rest .btn{flex:1 1 calc(50% - 8px)}
+@media(min-width:981px){
+  .em-acts{flex-direction:row;flex-wrap:wrap;align-items:center}
+  .em-acts .ac-burger{display:none}
+  .em-acts .ac-rest{display:flex;margin-top:0}
+  .em-acts .ac-main{flex:0 0 auto}
+}
+.logo-prev{margin-top:8px;min-height:44px;display:flex;align-items:center}
+.logo-prev img{max-height:70px;max-width:100%;object-fit:contain;border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff}
+.logo-prev .mut{font-size:11.5px;color:var(--muted)}
+.sg-logo{text-align:center;margin-bottom:12px}
+.sg-logo img{max-height:86px;max-width:70%;object-fit:contain}
+.sg-sigf{text-align:center}
+.sg-sigf img{max-height:90px;margin-top:8px}
+.sg-other{display:flex;justify-content:space-between;align-items:center;width:100%;gap:10px;
+  padding:12px 14px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:#fff;
+  font-size:13px;font-weight:600;text-align:left}
+.sg-other em{font-style:normal;font-size:11px;color:var(--gold-d);flex:0 0 auto}

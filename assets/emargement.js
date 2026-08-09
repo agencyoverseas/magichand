@@ -40,6 +40,14 @@ function joursEntre(d1,d2){
   while(a<=b && g<60){ out.push(a.toISOString().slice(0,10)); a.setDate(a.getDate()+1); g++; }
   return out;
 }
+var MOTIFS=[['maladie','Maladie'],['transport','Transport'],['familial','Familial'],['professionnel','Professionnel'],['autre','Autre']];
+var MOTIF_L={}; MOTIFS.forEach(function(m){ MOTIF_L[m[0]]=m[1]; });
+/* signature formateur de référence : Réglages, sinon l'image fournie avec le projet */
+function logoOrga(){ return settings().emLogo || ''; }
+function signatureRef(){
+  var s=settings();
+  return s.emSignature || ((window.MH_ASSETS&&window.MH_ASSETS.sign)||'assets/sign.jpg');
+}
 function defautData(fiche,formation){
   var s=settings(), ses=sessionPour(formation);
   var jours=ses?joursEntre(ses.s,ses.e):[today()];
@@ -143,7 +151,16 @@ function nomDe(s){
   return f?((f.prenom||'')+' '+(f.nom||'').toUpperCase()).trim():'Élève';
 }
 function ficheDe(eid){ var all=fiches(); for(var i=0;i<all.length;i++) if(all[i].eid===eid) return all[i]; return null; }
-function lienDe(s){ return location.origin+location.pathname.replace(/[^\/]*$/,'')+'signer.html?t='+encodeURIComponent(s.token); }
+var LIENS={};   /* eleve_id -> lien (un seul lien par élève, R35) */
+function baseUrl(){ return location.origin+location.pathname.replace(/[^\/]*$/,''); }
+function lienDe(s){ return LIENS[s.eleve_id] || ''; }
+function lienEleve(s){
+  if(LIENS[s.eleve_id]) return Promise.resolve(LIENS[s.eleve_id]);
+  return MHapi.admin.lienEleve(s.eleve_id).then(function(tok){
+    LIENS[s.eleve_id]=baseUrl()+'signer.html?t='+encodeURIComponent(tok);
+    return LIENS[s.eleve_id];
+  });
+}
 
 /* ---------- sauvegarde ---------- */
 function sauver(s,opt){
@@ -318,24 +335,29 @@ function dessinerFeuille(){
   var rows=(d.lignes||[]).map(function(l,i){
     function caseStag(slot){
       var o=sg[l.id]&&sg[l.id][slot];
-      var abs=l.absent&&l.absent[slot];
-      if(abs) return '<td class="c-sig abs">Absent</td>';
-      if(!o) return '<td class="c-sig vide" data-abs="'+l.id+'|'+slot+'">—</td>';
-      return '<td class="c-sig'+(o.valide?' ok':'')+'" data-val="'+l.id+'|'+slot+'">'
+      var ab=(d.absents&&d.absents[l.id]&&d.absents[l.id][slot])||null;
+      if(ab&&(ab.etat==='absent'||ab.etat==='excuse')){
+        return '<td class="c-sig abs" data-stag="'+l.id+'|'+slot+'">'
+          +(ab.etat==='excuse'?'Excusé':'Absent')
+          +(ab.motif?'<i class="motif">'+esc(MOTIF_L[ab.motif]||ab.motif)+'</i>':'')+'</td>';
+      }
+      if(!o) return '<td class="c-sig vide" data-stag="'+l.id+'|'+slot+'">—</td>';
+      return '<td class="c-sig'+(o.valide?' ok':'')+'" data-stag="'+l.id+'|'+slot+'">'
         +'<img src="'+o.img+'" alt="signature">'
         +'<em>'+esc((o.ts||'').replace('T',' ').slice(0,16))+(o.valide?' ✓':'')+'</em></td>';
     }
-    function caseForm(){
-      var sig=d.formateur&&d.formateur.signature;
-      return '<td class="c-sig">'+(sig?'<img src="'+sig+'" alt="signature formateur">':'<span class="mut">—</span>')+'</td>';
+    function caseForm(slot){
+      var sig=(d.sigF&&d.sigF[l.id]&&d.sigF[l.id][slot])?signatureRef():null;
+      if(sig) return '<td class="c-sig" data-form="'+l.id+'|'+slot+'"><img src="'+sig+'" alt="signature formateur"></td>';
+      return '<td class="c-sig tosign" data-form="'+l.id+'|'+slot+'"><span class="mut">signer</span></td>';
     }
     return '<tr>'
       +'<td class="c-date"><span data-date="'+l.id+'">'+esc(fmt(l.date))+'</span></td>'
       +(c.stagiaireM?caseStag('matin'):'')
       +(c.stagiaireA?caseStag('aprem'):'')
       +'<td class="c-form" data-lf="'+l.id+'">'+esc(l.formateur||'')+'</td>'
-      +(c.formateurM?caseForm():'')
-      +(c.formateurA?caseForm():'')
+      +(c.formateurM?caseForm('fmatin'):'')
+      +(c.formateurA?caseForm('faprem'):'')
       +'<td class="c-del no-pdf"><button class="icon-btn" data-delrow="'+l.id+'" title="Supprimer la ligne">🗑</button></td>'
       +'</tr>';
   }).join('');
@@ -344,7 +366,8 @@ function dessinerFeuille(){
   byId('emSheet').innerHTML=''
     +'<div class="em-top">'
       +'<div class="em-org" data-ed="entete.organisme">'+esc(d.entete&&d.entete.organisme||'').replace(/\n/g,'<br>')+'</div>'
-      +'<div class="em-logo"><img src="'+((window.MH_ASSETS&&window.MH_ASSETS.logoFull)||'assets/logo-full.png')+'" alt="logo"></div>'
+      +'<div class="em-logo'+(logoOrga()?'':' vide')+'" data-logo="1">'
+        +(logoOrga()?'<img src="'+logoOrga()+'" alt="logo">':'<span>Logo</span>')+'</div>'
     +'</div>'
     +'<h1 class="em-title" data-ed="entete.titre">'+esc(d.entete&&d.entete.titre||'')+'</h1>'
     +'<div class="em-rule"></div>'
@@ -381,7 +404,9 @@ function ajusterEchelle(){
   var wrap=byId('emWrap'), sh=byId('emSheet'); if(!wrap||!sh) return;
   sh.style.transform='none';
   var cw=wrap.clientWidth, sw=760;
-  var sc=Math.min(cw/sw,1);
+  var sc=cw/sw;
+  if(sw*sc<560) sc=560/sw;   /* sous cette largeur la feuille scrolle au lieu de devenir illisible */
+  if(sc>1) sc=1;
   sh.style.transformOrigin='top left';
   sh.style.transform='scale('+sc+')';
   wrap.style.height=(sh.offsetHeight*sc)+'px';
@@ -432,18 +457,18 @@ function brancherEdition(){
     });
   });
   /* valider / dévalider une signature */
-  $$('[data-val]',sheet).forEach(function(el){
+  /* case stagiaire : menu Présent / Absent / Excusé / Effacer */
+  $$('[data-stag]',sheet).forEach(function(el){
     el.addEventListener('click',function(){
-      var p=el.getAttribute('data-val').split('|');
-      basculerValidation(p[0],p[1]);
+      var p=el.getAttribute('data-stag').split('|');
+      menuPresence(p[0],p[1]);
     });
   });
-  /* marquer absent une case vide */
-  $$('[data-abs]',sheet).forEach(function(el){
+  /* case formateur : un tap pose ou retire la signature */
+  $$('[data-form]',sheet).forEach(function(el){
     el.addEventListener('click',function(){
-      var p=el.getAttribute('data-abs').split('|');
-      var l=ligne(p[0]); if(!l) return;
-      l.absent=l.absent||{}; l.absent[p[1]]=true; sauverDouce(true); toast('Marqué absent');
+      var p=el.getAttribute('data-form').split('|');
+      basculerSigFormateur(p[0],p[1]);
     });
   });
   var add=byId('emAddRow');
@@ -451,6 +476,68 @@ function brancherEdition(){
   $$('[data-delrow]',sheet).forEach(function(b){
     b.addEventListener('click',function(ev){ ev.stopPropagation(); supprimerLigne(b.getAttribute('data-delrow')); });
   });
+}
+/* ---------- présence : menu par case ---------- */
+function menuPresence(lid,slot){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var d=s.data, sig=(d.sign&&d.sign[lid]&&d.sign[lid][slot])||null;
+  var ab=(d.absents&&d.absents[lid]&&d.absents[lid][slot])||null;
+  var m=document.createElement('div'); m.className='confirm-bg em-menu';
+  m.innerHTML='<div class="confirm-box"><p>'+(sig?'Signature du '+esc((sig.ts||'').slice(0,10)):'Aucune signature')+'</p>'
+    +'<div class="acts col">'
+    +(sig?'<button class="btn '+(sig.valide?'gold':'cta')+'" data-mp="valider">'+(sig.valide?'Retirer la validation':'Valider la signature')+'</button>':'')
+    +'<button class="btn gold" data-mp="absent">Marquer absent</button>'
+    +'<button class="btn gold" data-mp="excuse">Marquer excusé</button>'
+    +((ab||sig)?'<button class="btn gold" data-mp="effacer">Effacer la case</button>':'')
+    +'<button class="btn gold" data-mp="fermer">Annuler</button>'
+    +'</div></div>';
+  document.body.appendChild(m); requestAnimationFrame(function(){ m.classList.add('show'); });
+  m.addEventListener('click',function(e){
+    if(e.target===m) return m.remove();
+    var b=e.target.closest('[data-mp]'); if(!b) return;
+    var k=b.getAttribute('data-mp'); m.remove();
+    if(k==='fermer') return;
+    if(k==='valider') return basculerValidation(lid,slot);
+    if(k==='effacer'){
+      if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
+      sauverDouce(true); return;
+    }
+    choisirMotif(function(motif){
+      d.absents=d.absents||{}; d.absents[lid]=d.absents[lid]||{};
+      d.absents[lid][slot]={etat:k,motif:motif||''};
+      sauverDouce(true);
+      toast(k==='excuse'?'Marqué excusé':'Marqué absent');
+    });
+  });
+}
+function choisirMotif(cb){
+  var m=document.createElement('div'); m.className='confirm-bg em-menu';
+  m.innerHTML='<div class="confirm-box"><p>Motif</p><div class="acts col">'
+    +MOTIFS.map(function(x){ return '<button class="btn gold" data-mo="'+x[0]+'">'+x[1]+'</button>'; }).join('')
+    +'<button class="btn gold" data-mo="">Sans motif</button></div></div>';
+  document.body.appendChild(m); requestAnimationFrame(function(){ m.classList.add('show'); });
+  m.addEventListener('click',function(e){
+    if(e.target===m) return m.remove();
+    var b=e.target.closest('[data-mo]'); if(!b) return;
+    m.remove(); cb(b.getAttribute('data-mo'));
+  });
+}
+/* ---------- signature formateur, case par case ---------- */
+function basculerSigFormateur(lid,slot){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var d=s.data; d.sigF=d.sigF||{}; d.sigF[lid]=d.sigF[lid]||{};
+  if(d.sigF[lid][slot]) delete d.sigF[lid][slot]; else d.sigF[lid][slot]=1;
+  sauverDouce(true);
+}
+function signerToutFormateur(){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var d=s.data, c=d.cols||{}; d.sigF=d.sigF||{};
+  (d.lignes||[]).forEach(function(l){
+    d.sigF[l.id]=d.sigF[l.id]||{};
+    if(c.formateurM) d.sigF[l.id].fmatin=1;
+    if(c.formateurA) d.sigF[l.id].faprem=1;
+  });
+  sauverDouce(true); toast('Toutes les cases formateur signées');
 }
 function ligne(id){ var s=sheetById(curId); var L=(s.data.lignes||[]); for(var i=0;i<L.length;i++) if(L[i].id===id) return L[i]; return null; }
 function isoDepuisFr(v){
@@ -563,20 +650,26 @@ function dessinerActions(){
   var s=sheetById(curId); if(!s) return;
   var host=byId('emActs'); if(!host) return;
   host.innerHTML=''
-    +'<button class="btn gold" id="acPdf">⬇️ PDF</button>'
-    +'<button class="btn cta" id="acWa">WhatsApp</button>'
-    +'<button class="btn gold" id="acCopy">Copier le lien</button>'
-    +'<button class="btn gold" id="acQr">QR code</button>'
-    +'<button class="btn gold" id="acSig">'+((s.data.formateur&&s.data.formateur.signature)?'Retirer ma signature':'Ajouter ma signature')+'</button>'
-    +'<button class="btn gold" id="acCols">Colonnes</button>'
-    +'<button class="btn gold" id="acLock">'+(s.locked?'Rouvrir':'Clôturer')+'</button>'
-    +'<button class="btn gold" id="acArch">'+(s.archived?'Désarchiver':'Archiver')+'</button>'
-    +(s.archived?'<button class="btn gold danger" id="acDel">Supprimer définitivement</button>':'');
+    +'<div class="ac-main">'
+      +'<button class="btn gold" id="acPdf">⬇️ PDF</button>'
+      +'<button class="btn cta" id="acWa">WhatsApp</button>'
+      +'<button class="btn gold" id="acCopy">Copier le lien</button>'
+      +'<button class="btn gold ac-burger" id="acMore" aria-label="Plus d\'actions">☰</button>'
+    +'</div>'
+    +'<div class="ac-rest" id="acRest">'
+      +'<button class="btn gold" id="acQr">QR code</button>'
+      +'<button class="btn gold" id="acSignAll">Signer toutes les cases formateur</button>'
+      +'<button class="btn gold" id="acCols">Colonnes</button>'
+      +'<button class="btn gold" id="acLock">'+(s.locked?'Rouvrir':'Clôturer')+'</button>'
+      +'<button class="btn gold" id="acArch">'+(s.archived?'Désarchiver':'Archiver')+'</button>'
+      +(s.archived?'<button class="btn gold danger" id="acDel">Supprimer définitivement</button>':'')
+    +'</div>';
+  byId('acMore').onclick=function(){ host.classList.toggle('open'); };
+  byId('acSignAll').onclick=function(){ signerToutFormateur(); };
   byId('acPdf').onclick=function(e){ pdf(e.currentTarget); };
   byId('acWa').onclick=function(){ whatsapp(s, !!s.sent_at); };
-  byId('acCopy').onclick=function(){ copier(lienDe(s)); };
-  byId('acQr').onclick=function(){ qr(s); };
-  byId('acSig').onclick=function(){ signatureFormateur(); };
+  byId('acCopy').onclick=function(){ lienEleve(s).then(function(l){ copier(l); },function(e){ toast(e.message||'Lien indisponible'); }); };
+  byId('acQr').onclick=function(){ lienEleve(s).then(function(){ qr(s); },function(e){ toast(e.message||'Lien indisponible'); }); };
   byId('acCols').onclick=function(){ reglerColonnes(); };
   byId('acLock').onclick=function(){
     sauver(s,{locked:!s.locked}).then(function(){ dessinerFeuille(); renderList(); toast(s.locked?'Feuille clôturée':'Feuille rouverte'); })
@@ -638,6 +731,9 @@ function copier(txt){
   } else prompt('Copie le lien :',txt);
 }
 function whatsapp(s,relance){
+  lienEleve(s).then(function(){ whatsappSuite(s,relance); },function(e){ toast(e.message||'Lien indisponible'); });
+}
+function whatsappSuite(s,relance){
   var f=ficheDe(s.eleve_id), tel=(f&&f.tel)||'';
   var num=(''+tel).replace(/[^\d]/g,'');
   if(num&&num.charAt(0)==='0') num='33'+num.slice(1);
@@ -703,7 +799,7 @@ function pdf(btn){
 /* ---------- export CSV des présences ---------- */
 function exportCsv(){
   if(!sheets.length){ toast('Aucune feuille'); return; }
-  var head=['Élève','Formation','Date','Créneau','Signé','Validé','Horodatage','Appareil','Statut feuille'];
+  var head=['Élève','Formation','Date','Créneau','Signé','Validé','Horodatage','Appareil','Présence','Motif','Statut feuille'];
   var rows=[];
   sheets.forEach(function(s){
     var d=s.data||{}, c=d.cols||{}, sg=d.sign||{}, st=STATUT_L[statutDe(s)];
@@ -711,9 +807,11 @@ function exportCsv(){
       [['matin',c.stagiaireM],['aprem',c.stagiaireA]].forEach(function(pair){
         if(!pair[1]) return;
         var o=sg[l.id]&&sg[l.id][pair[0]];
-        var abs=l.absent&&l.absent[pair[0]];
+        var a=(d.absents&&d.absents[l.id]&&d.absents[l.id][pair[0]])||null;
+        var pres=a?(a.etat==='excuse'?'Excusé':'Absent'):(o?'Présent':'—');
         rows.push([nomDe(s),s.formation||'',l.date||'',pair[0]==='matin'?'Matin':'Après-midi',
-          abs?'Absent':(o?'Oui':'Non'), (o&&o.valide)?'Oui':'Non', (o&&o.ts)||'', (o&&o.ua)||'', st]);
+          o?'Oui':'Non', (o&&o.valide)?'Oui':'Non', (o&&o.ts)||'', (o&&o.ua)||'',
+          pres, a?(MOTIF_L[a.motif]||a.motif||''):'', st]);
       });
     });
   });

@@ -1,13 +1,15 @@
 /* ============================================================
    signer.js — Page élève. Ne connaît QUE le token de sa feuille.
    Aucun accès aux données de l'agence : tout passe par les RPC
-   mh_em_get / mh_em_sign, qui ne renvoient que cette feuille.
+   mh_el_get / mh_el_sign, qui ne renvoient que SES feuilles.
    ============================================================ */
 (function(){
 "use strict";
 
 var token=(new URLSearchParams(location.search)).get('t')||'';
-var feuille=null;
+var feuilles=[];   /* v2 : toutes les feuilles de l'élève */
+var jourServeur='';
+var feuille=null;  /* feuille en cours d'affichage */
 
 function byId(id){ return document.getElementById(id); }
 function esc(s){ return (''+(s==null?'':s)).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])}); }
@@ -27,18 +29,37 @@ function ecran(html){ byId('sgMain').innerHTML=html; }
 function charger(){
   if(!token){ return ecran(erreur('Lien incomplet','Ouvre le lien exact reçu de ta formatrice.')); }
   if(!window.MHapi||!MHapi.configured()){ return ecran(erreur('Service indisponible','Réessaie dans un moment.')); }
-  MHapi.eleve.get(token).then(function(f){ feuille=f; rendre(); })
-    .catch(function(e){ ecran(erreur('Lien invalide', e.message||'Demande un nouveau lien à ta formatrice.')); });
+  MHapi.eleve.get(token).then(function(r){
+    feuilles=(r&&r.feuilles)||[]; jourServeur=(r&&r.jour)||today();
+    if(!feuilles.length) return ecran(erreur('Aucune feuille','Ta formatrice ne t\'a pas encore ouvert de feuille.'));
+    feuille=feuilleDuJour()||feuilles[0];
+    rendre();
+  }).catch(function(e){ ecran(erreur('Lien invalide', e.message||'Demande un nouveau lien à ta formatrice.')); });
 }
 function erreur(t,s){ return '<div class="sg-card sg-err"><b>'+esc(t)+'</b><p>'+esc(s)+'</p></div>'; }
 
+/* ---------- feuilles ---------- */
+function jour(){ return jourServeur||today(); }
+function aDuJour(f){
+  var d=f.data||{}, c=d.cols||{};
+  return (d.lignes||[]).some(function(l){
+    if(l.date!==jour()) return false;
+    return (c.stagiaireM||c.stagiaireA);
+  });
+}
+function feuilleDuJour(){ for(var i=0;i<feuilles.length;i++) if(aDuJour(feuilles[i])) return feuilles[i]; return null; }
+function autresFeuilles(){ return feuilles.filter(function(f){ return f!==feuille; }); }
+function titreF(f){ return (f.formation||'Formation')+((f.data&&f.data.entete&&f.data.entete.periode)?(' · '+f.data.entete.periode):''); }
+
 /* ---------- rendu ---------- */
 function creneauxDuJour(){
-  var d=feuille.data||{}, c=d.cols||{}, t=today(), out=[];
+  var d=feuille.data||{}, c=d.cols||{}, t=jour(), out=[];
   (d.lignes||[]).forEach(function(l){
     if(l.date!==t) return;
-    if(c.stagiaireM) out.push({ligne:l,slot:'matin',label:'Matin',horaire:(d.horaires&&d.horaires.matin)||''});
-    if(c.stagiaireA) out.push({ligne:l,slot:'aprem',label:'Après-midi',horaire:(d.horaires&&d.horaires.aprem)||''});
+    function absent(slot){ var a=d.absents&&d.absents[l.id]&&d.absents[l.id][slot];
+      return !!(a&&(a.etat==='absent'||a.etat==='excuse')); }
+    if(c.stagiaireM&&!absent('matin')) out.push({ligne:l,slot:'matin',label:'Matin',horaire:(d.horaires&&d.horaires.matin)||''});
+    if(c.stagiaireA&&!absent('aprem')) out.push({ligne:l,slot:'aprem',label:'Après-midi',horaire:(d.horaires&&d.horaires.aprem)||''});
   });
   return out;
 }
@@ -78,6 +99,7 @@ function rendre(){
   }
 
   ecran(''
+    +(e.logo?'<div class="sg-logo"><img src="'+e.logo+'" alt=""></div>':'')
     +'<div class="sg-card sg-id">'
       +'<b>'+esc(e.stagiaire||'Stagiaire')+'</b>'
       +'<p>'+esc(feuille.formation||'')+'</p>'
@@ -86,18 +108,35 @@ function rendre(){
     +'</div>'
     + bloc
     +'<div class="sg-card"><b>Mes émargements</b><div class="sg-recap">'+recap+'</div></div>'
+    +(sigFormateur()?'<div class="sg-card sg-sigf"><b>Signature du formateur</b><img src="'+sigFormateur()+'" alt=""></div>':'')
+    +(autresFeuilles().length?('<div class="sg-card"><b>Mes autres formations</b>'
+        +autresFeuilles().map(function(f,i){
+          return '<button class="sg-other" data-go="'+feuilles.indexOf(f)+'">'+esc(titreF(f))
+                 +(aDuJour(f)?'<em>à signer aujourd\'hui</em>':'')+'</button>';
+        }).join('')+'</div>'):'')
     +'<div class="sg-legal">Signature électronique horodatée. En signant, tu certifies ta présence sur le créneau concerné.</div>'
   );
 
   Array.prototype.slice.call(document.querySelectorAll('[data-sign]')).forEach(function(b){
     b.onclick=function(){ var p=b.getAttribute('data-sign').split('|'); ouvrirPad(p[0],p[1]); };
   });
+  Array.prototype.slice.call(document.querySelectorAll('[data-go]')).forEach(function(b){
+    b.onclick=function(){ feuille=feuilles[+b.getAttribute('data-go')]; rendre();
+      window.scrollTo({top:0,behavior:'smooth'}); };
+  });
+}
+function sigFormateur(){
+  var d=feuille.data||{};
+  var pose=d.sigF && Object.keys(d.sigF).some(function(k){ return Object.keys(d.sigF[k]||{}).length; });
+  return pose ? ((d.entete&&d.entete.signature)||'assets/sign.jpg') : '';
 }
 function etat(l,slot,label){
   var s=signature(l.id,slot);
-  var abs=l.absent&&l.absent[slot];
+  var d=feuille.data||{};
+  var a=d.absents&&d.absents[l.id]&&d.absents[l.id][slot];
+  var abs=!!(a&&(a.etat==='absent'||a.etat==='excuse'));
   var cls=abs?'abs':(s?(s.valide?'ok':'sig'):'no');
-  var txt=abs?'absent':(s?(s.valide?'validé':'signé'):'—');
+  var txt=abs?(a.etat==='excuse'?'excusé':'absent'):(s?(s.valide?'validé':'signé'):'—');
   return '<span class="sg-cell '+cls+'">'+esc(label)+' : '+esc(txt)+'</span>';
 }
 
@@ -120,9 +159,14 @@ function ouvrirPad(lid,slot){
     if(pad.vide()){ toast('La signature est vide'); return; }
     if(!m.querySelector('#sgOk').checked){ toast('Coche la case de certification'); return; }
     var b=m.querySelector('#sgGo'); b.disabled=true; b.textContent='Envoi…';
-    MHapi.eleve.sign(token,lid,slot,pad.png(),pad.pts()).then(function(){
+    MHapi.eleve.sign(token,feuille.id,lid,slot,pad.png(),pad.pts()).then(function(){
       m.remove(); toast('Présence enregistrée ✓');
-      return MHapi.eleve.get(token).then(function(f){ feuille=f; rendre(); });
+      return MHapi.eleve.get(token).then(function(r){
+        var id=feuille.id;
+        feuilles=(r&&r.feuilles)||[]; jourServeur=(r&&r.jour)||jourServeur;
+        feuille=feuilles.filter(function(x){return x.id===id})[0]||feuilles[0];
+        rendre();
+      });
     }).catch(function(e){
       b.disabled=false; b.textContent='Valider'; toast(e.message||'Échec de l\'envoi');
     });

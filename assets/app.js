@@ -137,7 +137,7 @@ var SETTINGS_HTML=''
 +'<div class="acts"><button class="btn gold" id="btnEmSig">🖊️ Ma signature enregistrée</button></div>'
 +'<div id="emSigPrev" class="note" style="margin-top:8px"></div>'
 +'<div class="note">Ces valeurs servent de base à chaque nouvelle feuille. Elles restent modifiables feuille par feuille.</div>'
-+'<div class="subttl">💾 Données</div>'
++'<div class="subttl">🖼️ Feuille d\'émargement</div>'+'<div class="fld"><label>Logo de l\'organisme (affiché sur la feuille et la page élève)</label>'+'<div class="acts"><button class="btn gold" id="btnLogo">Choisir une image</button><button class="btn gold" id="btnLogoDel">Retirer</button></div>'+'<div id="logoPrev" class="logo-prev"></div></div>'+'<input type="file" id="logoFile" accept="image/*" style="display:none">'+'<div class="fld"><label>Signature du formateur (posée sur les feuilles)</label>'+'<div class="acts"><button class="btn gold" id="btnSig">Choisir une image</button><button class="btn gold" id="btnSigDel">Remettre celle d\'origine</button></div>'+'<div id="sigPrev" class="logo-prev"></div></div>'+'<input type="file" id="sigFile" accept="image/*" style="display:none">'+'<div class="subttl">💾 Données</div>'
 +'<div class="acts"><button class="btn gold" id="btnExport">⬆️ Exporter (.json)</button><button class="btn gold" id="btnImport">⬇️ Importer (.json)</button></div>'
 +'<input type="file" id="impFile" accept="application/json" style="display:none">'
 +'<div class="note" style="margin-top:14px">Sauvegarde complète : catalogue, élèves, contacts closing et réglages. À garder hors-ligne.</div>';
@@ -529,6 +529,22 @@ function mountSettings(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=SE
       settings.emSignature=pad.png();save(LS.set,settings);m.remove();renderEmSig();toast('Signature enregistrée');
     };
   };
+  /* --- logo + signature de la feuille d'émargement --- */
+  function prev(id,src,vide){ var e=byId(id); if(e) e.innerHTML= src?('<img src="'+src+'" alt="">'):('<span class="mut">'+vide+'</span>'); }
+  function refreshImgs(){
+    prev('logoPrev',settings.emLogo||'','Aucun logo — le bloc reste vide sur la feuille');
+    prev('sigPrev',settings.emSignature||((window.MH_ASSETS&&window.MH_ASSETS.sign)||'assets/sign.jpg'),'—');
+  }
+  function lire(file,cb){ var r=new FileReader(); r.onload=function(){ cb(r.result); }; r.readAsDataURL(file); }
+  byId('btnLogo').onclick=function(){ byId('logoFile').click(); };
+  byId('logoFile').onchange=function(e){ var f=e.target.files[0]; if(!f)return;
+    lire(f,function(u){ settings.emLogo=u; save(LS.set,settings); refreshImgs(); toast('Logo enregistré'); }); e.target.value=''; };
+  byId('btnLogoDel').onclick=function(){ delete settings.emLogo; save(LS.set,settings); refreshImgs(); toast('Logo retiré'); };
+  byId('btnSig').onclick=function(){ byId('sigFile').click(); };
+  byId('sigFile').onchange=function(e){ var f=e.target.files[0]; if(!f)return;
+    lire(f,function(u){ settings.emSignature=u; save(LS.set,settings); refreshImgs(); toast('Signature enregistrée'); }); e.target.value=''; };
+  byId('btnSigDel').onclick=function(){ delete settings.emSignature; save(LS.set,settings); refreshImgs(); toast('Signature d\'origine rétablie'); };
+  refreshImgs();
   byId('btnExport').onclick=exportJSON;byId('btnImport').onclick=function(){byId('impFile').click()};
   byId('impFile').onchange=importJSON}
 function renderEmSig(){var p=byId('emSigPrev');if(!p)return;

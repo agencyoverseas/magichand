@@ -5,7 +5,7 @@
    fallback sur le cache si hors-ligne). Ne touche jamais aux
    requêtes Supabase (cross-origin, jamais interceptées).
    ============================================================ */
-var CACHE_VERSION = 'mh-shell-v2';
+var CACHE_VERSION = 'mh-shell-v3';
 var PRECACHE = [
   './',
   './index.html',
