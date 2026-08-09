@@ -129,6 +129,14 @@ var SETTINGS_HTML=''
 +'<div class="fld"><label>Établissement</label><input id="setEtab"></div>'
 +'<div class="subttl">📍 Valeurs par défaut</div>'
 +'<div class="grid2"><div class="fld"><label>Lieu</label><input id="setLieu"></div><div class="fld"><label>Durée</label><input id="setDuree"></div></div>'
++'<div class="subttl">✍️ Feuille d\'émargement</div>'
++'<div class="fld"><label>Coordonnées de l\'organisme (haut de la feuille)</label><textarea id="setEmOrg" rows="5"></textarea></div>'
++'<div class="fld"><label>Lieu de formation par défaut</label><input id="setEmLieu"></div>'
++'<div class="fld"><label>Bloc bas de page</label><textarea id="setEmPied" rows="3"></textarea></div>'
++'<div class="fld"><label>Bloc « L\'organisme de formation »</label><textarea id="setEmOrgBloc" rows="3"></textarea></div>'
++'<div class="acts"><button class="btn gold" id="btnEmSig">🖊️ Ma signature enregistrée</button></div>'
++'<div id="emSigPrev" class="note" style="margin-top:8px"></div>'
++'<div class="note">Ces valeurs servent de base à chaque nouvelle feuille. Elles restent modifiables feuille par feuille.</div>'
 +'<div class="subttl">💾 Données</div>'
 +'<div class="acts"><button class="btn gold" id="btnExport">⬆️ Exporter (.json)</button><button class="btn gold" id="btnImport">⬇️ Importer (.json)</button></div>'
 +'<input type="file" id="impFile" accept="application/json" style="display:none">'
@@ -269,15 +277,35 @@ function fillEleveFilters(){var sel=byId('cliFiltForm');if(!sel)return;var cur=s
   var forms=[];clients.forEach(function(c){if(c.formation&&forms.indexOf(c.formation)<0)forms.push(c.formation)});
   sel.innerHTML='<option value="">Toutes formations</option>'+forms.map(function(f){return '<option>'+esc(f)+'</option>'}).join('');
   sel.value=cur}
+/* identifiant élève stable : survit à une correction d'orthographe du nom */
+function uid(){
+  if(window.crypto&&window.crypto.randomUUID)return window.crypto.randomUUID();
+  return 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+}
+function ensureEids(){
+  var byKey={},changed=false;
+  clients.forEach(function(c){var k=normName(c.prenom,c.nom);if(c.eid&&!byKey[k])byKey[k]=c.eid});
+  clients.forEach(function(c){
+    var k=normName(c.prenom,c.nom);
+    if(!byKey[k]){byKey[k]=uid();changed=true}
+    if(c.eid!==byKey[k]){c.eid=byKey[k];changed=true}
+  });
+  if(changed)save(LS.cli,clients);
+  return changed;
+}
 /* regroupe tous les documents (clients[]) en fiches élève par Prénom+Nom */
 function buildFiches(){
   var map={};
+  ensureEids();
   clients.forEach(function(c){
     var key=normName(c.prenom,c.nom);
-    if(!map[key])map[key]={key:key,prenom:c.prenom,nom:c.nom,avatar:null,adresse:'',formations:[],docs:[]};
+    if(!map[key])map[key]={key:key,eid:c.eid,prenom:c.prenom,nom:c.nom,avatar:null,adresse:'',tel:'',email:'',formations:[],docs:[]};
     var f=map[key];
+    if(!f.eid&&c.eid)f.eid=c.eid;
     if(c.avatar)f.avatar=c.avatar;
     if(c.adresse&&!f.adresse)f.adresse=c.adresse;
+    if(c.tel&&!f.tel)f.tel=c.tel;
+    if(c.email&&!f.email)f.email=c.email;
     if(c.formation&&f.formations.indexOf(c.formation)<0)f.formations.push(c.formation);
     f.docs.push(c);
   });
@@ -339,7 +367,12 @@ function openFiche(key){
         +'<div class="fiche-av" id="ficheAv">'+avInner+'<input type="file" accept="image/*" id="ficheAvInput" style="display:none"></div>'
         +'<h3>'+esc(f.prenom)+' '+esc((f.nom||'').toUpperCase())+'</h3>'
         +(f.adresse?'<p class="fiche-adr">'+esc(f.adresse)+'</p>':'')
-        +'<button class="btn cta" id="ficheNewDoc" style="width:100%;margin:14px 0">+ Nouveau document</button>'
+        +'<div class="grid2" style="margin-top:12px">'
+          +'<div class="fld"><label>Téléphone (WhatsApp)</label><input id="ficheTel" placeholder="0690 00 00 00" value="'+esc(f.tel||'')+'"></div>'
+          +'<div class="fld"><label>Email</label><input id="ficheMail" placeholder="prenom@mail.fr" value="'+esc(f.email||'')+'"></div>'
+        +'</div>'
+        +'<button class="btn cta" id="ficheNewDoc" style="width:100%;margin:14px 0 8px">+ Nouveau document</button>'
+        +'<button class="btn gold" id="ficheEmarg" style="width:100%;margin:0 0 14px">✍️ Feuille d\'émargement</button>'
         +'<div class="subttl">📄 Documents générés ('+f.docs.length+')</div>'
         +'<div id="ficheDocs">'+docsHtml+'</div>'
       +'</div>'
@@ -351,6 +384,20 @@ function openFiche(key){
   byId('ficheAv').onclick=function(){byId('ficheAvInput').click()};
   byId('ficheAvInput').onchange=function(e){onFicheAvatar(e,f.key)};
   byId('ficheNewDoc').onclick=function(){ficheNewDoc(f.key)};
+  ['ficheTel','ficheMail'].forEach(function(id){
+    var e=byId(id); if(!e)return;
+    e.addEventListener('change',function(){
+      var champ=(id==='ficheTel')?'tel':'email', v=e.value.trim();
+      clients.forEach(function(c){if(normName(c.prenom,c.nom)===f.key)c[champ]=v});
+      save(LS.cli,clients);toast('Coordonnées enregistrées');
+    });
+  });
+  var be=byId('ficheEmarg');
+  if(be)be.onclick=function(){
+    if(!window.MHemarg){toast('Module émargement indisponible');return}
+    closeFiche();
+    window.MHemarg.openForEleve(f.eid,f.formations[0]||'');
+  };
   byId('ficheDelAll').onclick=function(){confirmModal('Supprimer '+f.prenom+' '+f.nom+' et tous ses documents ('+f.docs.length+') ?',function(){deleteFiche(f.key)})};
 }
 function onFicheAvatar(e,key){var file=e.target.files[0];if(!file)return;
@@ -413,8 +460,17 @@ function setIf(id,v){var e=byId(id);if(e)e.value=v}
 function saveClient(kind){var pre=val('prenom'),no=val('nom');if(!pre||!no)return;
   var rec={id:Date.now()+''+Math.floor(Math.random()*99),ts:Date.now(),prenom:pre,nom:no,adresse:val('adresse'),formation:val('formation'),ds:val('dstart'),de:val('dend'),duree:val('duree'),lieu:val('lieu'),em:val('demit'),type:kind||'cert'};
   var key=normName(pre,no);
-  var av=null;clients.forEach(function(c){if(!av&&normName(c.prenom,c.nom)===key&&c.avatar)av=c.avatar});
+  var av=null,eid=null,tel=null,mail=null;
+  clients.forEach(function(c){
+    if(normName(c.prenom,c.nom)!==key)return;
+    if(!av&&c.avatar)av=c.avatar;
+    if(!eid&&c.eid)eid=c.eid;
+    if(!tel&&c.tel)tel=c.tel;
+    if(!mail&&c.email)mail=c.email;
+  });
   if(av)rec.avatar=av;
+  rec.eid=eid||uid();
+  if(tel)rec.tel=tel; if(mail)rec.email=mail;
   clients.unshift(rec);save(LS.cli,clients);fillEleveFilters();renderClients();updateStats()}
 function exportCsv(){if(!clients.length)return toast('Base vide');
   var head=['Prénom','Nom','Formation','Du','Au','Durée','Lieu','Émission','Adresse'];
@@ -444,8 +500,41 @@ function mountSettings(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=SE
   byId('setFormateur').value=settings.formateur;byId('setEtab').value=settings.etab;byId('setLieu').value=settings.lieuDef;byId('setDuree').value=settings.dureeDef;
   ['setFormateur','setEtab','setLieu','setDuree'].forEach(function(id){byId(id).addEventListener('input',function(){
     settings.formateur=val('setFormateur');settings.etab=val('setEtab');settings.lieuDef=val('setLieu');settings.dureeDef=val('setDuree');save(LS.set,settings);render()})});
+  var EMF={setEmOrg:'emOrganisme',setEmLieu:'emLieu',setEmPied:'emPied',setEmOrgBloc:'emOrgBloc'};
+  Object.keys(EMF).forEach(function(id){
+    var e=byId(id); if(!e)return;
+    e.value=settings[EMF[id]]||'';
+    e.addEventListener('input',function(){settings[EMF[id]]=e.value;save(LS.set,settings)});
+  });
+  renderEmSig();
+  var bs=byId('btnEmSig');
+  if(bs)bs.onclick=function(){
+    if(settings.emSignature){
+      confirmModal('Remplacer ou supprimer la signature enregistrée ?',function(){
+        settings.emSignature=null;save(LS.set,settings);renderEmSig();toast('Signature supprimée');
+      });
+      return;
+    }
+    if(!window.MHemarg||!window.MHemarg.signaturePad){toast('Module émargement indisponible');return}
+    var m=document.createElement('div');m.className='confirm-bg show';
+    m.innerHTML='<div class="confirm-box"><p>Signe une fois : elle sera réutilisable sur toutes les feuilles.</p>'
+      +'<canvas id="stC" class="sig-canvas" width="600" height="200"></canvas>'
+      +'<div class="acts"><button class="btn gold" id="stClr">Effacer</button><button class="btn gold" id="stN">Annuler</button><button class="btn cta" id="stO">Enregistrer</button></div></div>';
+    document.body.appendChild(m);
+    var pad=window.MHemarg.signaturePad(m.querySelector('#stC'));
+    m.querySelector('#stClr').onclick=function(){pad.clear()};
+    m.querySelector('#stN').onclick=function(){m.remove()};
+    m.querySelector('#stO').onclick=function(){
+      if(pad.vide()){toast('Signature vide');return}
+      settings.emSignature=pad.png();save(LS.set,settings);m.remove();renderEmSig();toast('Signature enregistrée');
+    };
+  };
   byId('btnExport').onclick=exportJSON;byId('btnImport').onclick=function(){byId('impFile').click()};
   byId('impFile').onchange=importJSON}
+function renderEmSig(){var p=byId('emSigPrev');if(!p)return;
+  p.innerHTML=settings.emSignature
+    ?'<img src="'+settings.emSignature+'" alt="signature" style="max-height:60px;background:#fff;border-radius:8px;padding:4px">'
+    :'Aucune signature enregistrée pour l\'instant.'}
 function exportJSON(){var data={v:1,exported:new Date().toISOString(),catalogue:cat,clients:clients,contacts:contacts,settings:settings,gencount:gencount};
   dl(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'magic-hands-data.json');toast('Export .json')}
 function importJSON(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();
@@ -526,6 +615,7 @@ function saveProspect(){var n=((byId('pfNom')||{}).value||'');if(!n.trim()){toas
 function renderCommissions(){var won=contacts.filter(function(c){return c.stage==='won'});var wm=won.filter(function(c){return thisMonth(c.ts)});var caM=wm.reduce(function(s,c){return s+(c.amt||0)},0);var vM=wm.length;var unlocked=vM>=5;var acq=unlocked?Math.round(caM*0.1):0;var att=unlocked?0:Math.round(caM*0.1);var pot=Math.round(caSum()*0.1);var pts=won.reduce(function(s,c){return s+ptsForForm(c.form)},0);setText('comVentes',vM+' / 5');setText('comAcquise',nfmt(acq)+' €');setText('comAttente',nfmt(att)+' €');setText('comPotentiel',nfmt(pot)+' €');setText('comPoints',pts);setText('comGrade',gradeFor(pts))}
 window.MH={mountGenerator:mountGenerator,mountCatalogue:mountCatalogue,mountEleves:mountEleves,mountSettings:mountSettings,mountClosing:mountClosing,
   scaleDocs:scaleDocs,refreshAll:refreshAll,render:render,toast:toast,exportJSON:exportJSON,normName:normName,openFiche:openFiche,
+  fiches:buildFiches,ensureEids:ensureEids,confirmModal:confirmModal,fmt:fmt,today:today,
   data:function(){return {cat:cat,clients:clients,contacts:contacts,settings:settings,gencount:gencount,ca:caSum()}}};
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',autoInit);else autoInit();

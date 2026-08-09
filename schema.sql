@@ -50,3 +50,29 @@ create trigger mh_touch_trg before update on public.mh_state
 
 -- Temps réel (sync instantanée entre appareils)
 alter publication supabase_realtime add table public.mh_state;
+
+-- ============================================================
+-- ÉMARGEMENT — v1 (déjà appliqué sur nexusai-suite le 09/08/2026)
+-- Conservé ici pour pouvoir recréer le projet à l'identique.
+-- Aucune table n'est accessible directement par la clé anon :
+-- tout passe par des fonctions RPC (SECURITY DEFINER).
+-- ============================================================
+-- Voir les migrations appliquées :
+--   mh_emargement_v1, mh_emargement_rpc_v1,
+--   mh_emargement_rpc_v2_fix_jsonb_parents, mh_state_rpc_v1
+--
+-- Résumé des objets créés :
+--   table  public.mh_keys         (workspace, code_hash)  -- code atelier haché (bcrypt)
+--   table  public.mh_emargements  (id, workspace, eleve_id, formation, token,
+--                                  data jsonb, statut, archived, locked, sent_at, rev)
+--   fn     mh_check(ws, code)                 -- vérifie le code atelier
+--   fn     mh_em_list / mh_em_save / mh_em_delete / mh_em_validate   -- côté gérante
+--   fn     mh_em_get(token) / mh_em_sign(token, ligne, slot, img, pts, ua) -- côté élève
+--   fn     mh_state_get / mh_state_put / mh_state_rev                -- sync de l'app
+--
+-- Règles appliquées côté serveur (non contournables depuis le navigateur) :
+--   * l'élève ne peut lire QUE sa feuille, via son token ;
+--   * il ne peut signer que le jour exact de la ligne (fuseau Europe/Paris) ;
+--   * il ne peut pas réécrire une signature déjà validée par la gérante ;
+--   * une feuille clôturée (locked) n'accepte plus aucune signature ;
+--   * toute action de la gérante exige le code atelier.
