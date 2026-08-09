@@ -5,7 +5,7 @@
    fallback sur le cache si hors-ligne). Ne touche jamais aux
    requêtes Supabase (cross-origin, jamais interceptées).
    ============================================================ */
-var CACHE_VERSION = 'mh-shell-v7';
+var CACHE_VERSION = 'mh-shell-v8';
 var PRECACHE = [
   './',
   './index.html',
@@ -67,6 +67,15 @@ self.addEventListener('activate', function(e){
 function isSameOrigin(url){
   try{ return new URL(url).origin === self.location.origin; }catch(e){ return false; }
 }
+
+/* version.json : toujours réseau, jamais de cache */
+self.addEventListener('fetch', function(e){
+  if(e.request.url.indexOf('version.json')>-1){
+    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(function(){
+      return new Response('{}',{headers:{'Content-Type':'application/json'}});
+    }));
+  }
+}, false);
 
 self.addEventListener('fetch', function(e){
   var req = e.request;
