@@ -252,3 +252,7 @@
   padding:12px 14px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:#fff;
   font-size:13px;font-weight:600;text-align:left}
 .sg-other em{font-style:normal;font-size:11px;color:var(--gold-d);flex:0 0 auto}
+.em-nosig.tosign{cursor:pointer;padding:6px 10px;border:1px dashed #cfc7b6;border-radius:6px;
+  color:#a99f8c;font-size:10px;display:inline-block;margin-top:6px}
+.em-nosig.tosign:hover{background:#f4f2ec}
+.em-sigf{cursor:pointer}

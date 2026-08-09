@@ -362,7 +362,7 @@ function dessinerFeuille(){
       +'</tr>';
   }).join('');
 
-  var sigF=d.formateur&&d.formateur.signature;
+  var sigF=(d.pied&&d.pied.signature)?signatureRef():null;
   byId('emSheet').innerHTML=''
     +'<div class="em-top">'
       +'<div class="em-org" data-ed="entete.organisme">'+esc(d.entete&&d.entete.organisme||'').replace(/\n/g,'<br>')+'</div>'
@@ -383,7 +383,8 @@ function dessinerFeuille(){
       +'<div class="em-foot-l" data-ed="pied.bloc">'+esc(d.pied&&d.pied.bloc||'').replace(/\n/g,'<br>')
         +'<div class="em-maj">MAJ le <span data-ed="pied.maj">'+esc(fmt(d.pied&&d.pied.maj||''))+'</span></div></div>'
       +'<div class="em-foot-r"><div data-ed="pied.organisme">'+esc(d.pied&&d.pied.organisme||'').replace(/\n/g,'<br>')+'</div>'
-        +(sigF?'<img class="em-sigf" src="'+sigF+'" alt="signature">':'<div class="em-nosig">— pas de signature —</div>')+'</div>'
+        +(sigF?'<img class="em-sigf" src="'+sigF+'" alt="signature" data-sigpied="1">'
+              :'<div class="em-nosig tosign" data-sigpied="1">signer ici</div>')+'</div>'
     +'</div>'
     +'<div class="em-mention">Document signé électroniquement. Chaque signature est horodatée (fuseau Europe/Paris) et conservée avec l\'appareil utilisé.</div>';
 
@@ -464,6 +465,18 @@ function brancherEdition(){
       menuPresence(p[0],p[1]);
     });
   });
+  /* bloc « L'organisme de formation » : un tap pose ou retire la signature */
+  $$('[data-sigpied]',sheet).forEach(function(el){
+    el.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      var st=sheetById(curId); if(!st||st.locked) return;
+      st.data.pied=st.data.pied||{};
+      st.data.pied.signature = st.data.pied.signature ? 0 : 1;
+      sauverDouce(true);
+      toast(st.data.pied.signature?'Signature ajoutée':'Signature retirée');
+    });
+  });
+
   /* case formateur : un tap pose ou retire la signature */
   $$('[data-form]',sheet).forEach(function(el){
     el.addEventListener('click',function(){
@@ -537,6 +550,7 @@ function signerToutFormateur(){
     if(c.formateurM) d.sigF[l.id].fmatin=1;
     if(c.formateurA) d.sigF[l.id].faprem=1;
   });
+  d.pied=d.pied||{}; d.pied.signature=1;
   sauverDouce(true); toast('Toutes les cases formateur signées');
 }
 function ligne(id){ var s=sheetById(curId); var L=(s.data.lignes||[]); for(var i=0;i<L.length;i++) if(L[i].id===id) return L[i]; return null; }
