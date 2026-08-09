@@ -222,7 +222,11 @@
     var desktop=window.matchMedia?window.matchMedia('(min-width:981px)').matches:(window.innerWidth>=981);
     var tabs=gd.querySelector('.doctabs'), acts=gd.querySelector('.acts');
     var vis=gd.querySelector('.stage:not(.hide)'), capH=0; if(vis){var cap=vis.querySelector('.cap'); if(cap)capH=cap.offsetHeight;}
-    var avail = desktop ? (gd.clientHeight-(tabs?tabs.offsetHeight:0)-(acts?acts.offsetHeight:0)-capH-22) : Math.round(window.innerHeight*0.62);
+    /* la colonne n'a plus de hauteur figée : on part de la fenêtre, pas du conteneur
+       (sinon l'aperçu se calcule à partir de lui-même et s'effondre) */
+    var haut = gd.getBoundingClientRect().top;
+    var dispo = window.innerHeight - haut - (tabs?tabs.offsetHeight:0) - (acts?acts.offsetHeight:0) - capH - 40;
+    var avail = desktop ? dispo : Math.round(window.innerHeight*0.62);
     if(avail<160)avail=160;
     var a=byId('wrapCert'),b=byId('wrapAtt');
     if(a)a.setAttribute('data-maxh',avail); if(b)b.setAttribute('data-maxh',avail);

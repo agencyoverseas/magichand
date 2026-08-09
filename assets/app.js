@@ -105,7 +105,7 @@ var GEN_HTML=''
 +'    <div class="att-full" style="font-weight:700" id="a_made">Fait à Paris le —</div>'
 +'    <div class="att-sign"><div class="who">Fondateur et Responsable formation</div><div class="nm" id="a_signnm">Jordan Ly Pinto</div><img src="'+SIGN+'" alt="signature"></div>'
 +'   </div></div></div></div>'
-+'  <div class="acts"><button class="btn gold" id="btnCert">⬇️ Certificat</button><button class="btn gold" id="btnAtt">⬇️ Attestation</button><button class="btn cta" id="btnBoth">⬇️ Les 2 (1 PDF)</button></div>'
++'  <div class="acts"><button class="btn gold" id="btnSaveEleve">💾 Enregistrer l\'élève</button><button class="btn gold" id="btnCert">⬇️ Certificat</button><button class="btn gold" id="btnAtt">⬇️ Attestation</button><button class="btn cta" id="btnBoth">⬇️ Les 2 (1 PDF)</button></div>'
 +' </div>'
 +'</div>';
 
@@ -170,6 +170,16 @@ function mountGenerator(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=G
   byId('lieu').value=settings.lieuDef||'Paris';byId('duree').value=settings.dureeDef||'';byId('demit').value=today();
   fillFormation();buildCal();buildChips();
   ['prenom','nom','adresse','formation','dstart','dend','duree','lieu','demit'].forEach(function(id){var e=byId(id);if(e)e.addEventListener('input',function(){if(id==='dstart'||id==='dend')selSession=null;render()})});
+  byId('btnSaveEleve').onclick=function(){
+    var p=(byId('prenom').value||'').trim(), n=(byId('nom').value||'').trim();
+    if(!p||!n) return toast('Prénom et nom obligatoires');
+    var f=byId('formation'); if(f && !f.value) return toast('Choisis une formation');
+    var cle=normName(p,n)+'|'+((f&&f.value)||'');
+    var deja=clients.some(function(c){ return normName(c.prenom,c.nom)+'|'+(c.formation||'')===cle; });
+    if(deja) return toast('Cet élève est déjà enregistré sur cette formation');
+    saveClient('fiche');
+    toast('Élève enregistré');
+  };
   byId('btnCert').onclick=function(e){pdf('cert',e.currentTarget)};
   byId('btnAtt').onclick=function(e){pdf('att',e.currentTarget)};
   byId('btnBoth').onclick=function(e){pdf('both',e.currentTarget)};
@@ -194,6 +204,15 @@ function fitCert(){['c_nom','c_form'].forEach(function(id){var el=byId(id);if(!e
 function scaleOne(wrapId,docId,w,h){var wrap=byId(wrapId),doc=byId(docId);if(!wrap||!doc)return;var cw=wrap.clientWidth;if(!cw){doc.style.transform='scale(0)';wrap.style.height='0px';return}var s=cw/w;var mh=parseFloat(wrap.getAttribute('data-maxh')||'0');if(mh>0&&h*s>mh)s=mh/h;var offx=(cw-w*s)/2;if(offx<0)offx=0;doc.style.transformOrigin='top left';doc.style.transform='translateX('+offx+'px) scale('+s+')';wrap.style.height=(h*s)+'px'}
 function scaleDocs(){scaleOne('wrapCert','cert',1000,707);scaleOne('wrapAtt','attest',720,1016)}
 window.addEventListener('resize',scaleDocs);
+/* filet de sécurité : si la colonne change de taille pour une raison quelconque
+   (police chargée, sidebar repliée, zoom navigateur), on remet l'aperçu à l'échelle */
+if(window.ResizeObserver){
+  var _ro=new ResizeObserver(function(){ if(window.__docsFit) window.__docsFit(); else scaleDocs(); });
+  document.addEventListener('DOMContentLoaded',function(){
+    ['wrapCert','wrapAtt'].forEach(function(id){ var e=byId(id); if(e)_ro.observe(e); });
+    var gd=document.querySelector('#scr-docs .gen-docs'); if(gd)_ro.observe(gd);
+  });
+}
 
 /* calendar */
 var calRef=new Date(2026,7,1);
