@@ -256,3 +256,15 @@
   color:#a99f8c;font-size:10px;display:inline-block;margin-top:6px}
 .em-nosig.tosign:hover{background:#f4f2ec}
 .em-sigf{cursor:pointer}
+
+.em-logo img{background:#AD460B;border-radius:2px}
+.em-logo.vide{display:none}
+.em-lieu{cursor:pointer}
+.em-lieu span{display:inline-block;font-weight:600}
+.em-logo.off{display:flex;align-items:center;justify-content:center;width:150px;height:78px;
+  border:1px dashed #cfc7b6;border-radius:4px;cursor:pointer}
+.em-logo.off .mut{font-size:8.5px;color:#a99f8c;text-align:center;line-height:1.3;padding:0 6px}
+.em-logo{cursor:pointer}
+/* la feuille ne déborde jamais : elle est mise à l'échelle, pas tronquée */
+.em-sheet-wrap{overflow:hidden}
+.em-scroll{overflow-x:hidden}

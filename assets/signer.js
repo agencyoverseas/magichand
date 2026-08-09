@@ -99,7 +99,7 @@ function rendre(){
   }
 
   ecran(''
-    +(e.logo?'<div class="sg-logo"><img src="'+e.logo+'" alt=""></div>':'')
+    +'<div class="sg-logo"><img src="'+(e.logo||'assets/logo-magic-hands.png')+'" alt="Magic Hands"></div>'
     +'<div class="sg-card sg-id">'
       +'<b>'+esc(e.stagiaire||'Stagiaire')+'</b>'
       +'<p>'+esc(feuille.formation||'')+'</p>'

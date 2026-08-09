@@ -40,10 +40,18 @@ function joursEntre(d1,d2){
   while(a<=b && g<60){ out.push(a.toISOString().slice(0,10)); a.setDate(a.getDate()+1); g++; }
   return out;
 }
+var LIEU_DEF={nom:'NOMEIA - Espace de coworking beauté',adr:'43 Rue Pierre Valette - 92240 Malakoff'};
+function lieux(){
+  var l=settings().emLieux;
+  if(!l||!l.length) l=[LIEU_DEF,{nom:'Paris',adr:''}];
+  return l;
+}
+function lieuTexte(L){ if(!L) return ''; return L.adr ? (L.nom+'\n'+L.adr) : (L.nom||''); }
 var MOTIFS=[['maladie','Maladie'],['transport','Transport'],['familial','Familial'],['professionnel','Professionnel'],['autre','Autre']];
 var MOTIF_L={}; MOTIFS.forEach(function(m){ MOTIF_L[m[0]]=m[1]; });
 /* signature formateur de référence : Réglages, sinon l'image fournie avec le projet */
-function logoOrga(){ return settings().emLogo || ''; }
+function logoOrga(){ return settings().emLogo || 'assets/logo-magic-hands.png'; }
+function logoFeuille(s){ return (s&&s.data&&s.data.entete&&s.data.entete.logoOff) ? '' : logoOrga(); }
 function signatureRef(){
   var s=settings();
   return s.emSignature || ((window.MH_ASSETS&&window.MH_ASSETS.sign)||'assets/sign.jpg');
@@ -58,7 +66,7 @@ function defautData(fiche,formation){
       stagiaire:((fiche.prenom||'')+' '+((fiche.nom||'').toUpperCase())).trim(),
       formation:formation||'',
       periode: ses?(fmt(ses.s)+' au '+fmt(ses.e)):'',
-      lieu: s.emLieu || (s.lieuDef||'Paris')
+      lieu: s.emLieu || lieuTexte(lieux()[0])
     },
     horaires:{ matin:'10H00 à 13H00', aprem:'14H00 à 18H00', fmatin:'09H00 à 13H00', faprem:'14H00 à 18H00' },
     cols:{ stagiaireM:true, stagiaireA:true, formateurM:true, formateurA:true },
@@ -366,8 +374,9 @@ function dessinerFeuille(){
   byId('emSheet').innerHTML=''
     +'<div class="em-top">'
       +'<div class="em-org" data-ed="entete.organisme">'+esc(d.entete&&d.entete.organisme||'').replace(/\n/g,'<br>')+'</div>'
-      +'<div class="em-logo'+(logoOrga()?'':' vide')+'" data-logo="1">'
-        +(logoOrga()?'<img src="'+logoOrga()+'" alt="logo">':'<span>Logo</span>')+'</div>'
+      +(function(){ var lg=logoFeuille(sheetById(curId));
+          return '<div class="em-logo'+(lg?'':' off')+'" data-logo="1">'
+            +(lg?'<img src="'+lg+'" alt="Magic Hands">':'<span class="mut">logo retiré — taper pour remettre</span>')+'</div>'; })()
     +'</div>'
     +'<h1 class="em-title" data-ed="entete.titre">'+esc(d.entete&&d.entete.titre||'')+'</h1>'
     +'<div class="em-rule"></div>'
@@ -375,7 +384,8 @@ function dessinerFeuille(){
       +'<div class="em-stag" data-ed="entete.stagiaire">'+esc(d.entete&&d.entete.stagiaire||'')+'</div>'
       +'<div>Emargement pour la période du <b data-ed="entete.periode">'+esc(d.entete&&d.entete.periode||'')+'</b></div>'
       +'<div>Intitulé de la formation : <b data-formation="1">'+esc(s.formation||'—')+'</b></div>'
-      +'<div>Lieu(x) de la formation : <span data-ed="entete.lieu">'+esc(d.entete&&d.entete.lieu||'')+'</span></div>'
+      +'<div class="em-lieu" data-lieu="1">Lieu(x) de la formation : <span>'
+        +esc(d.entete&&d.entete.lieu||'').replace(/\n/g,'<br>')+'</span></div>'
     +'</div>'
     +'<table class="em-table"><thead>'+th+'</thead><tbody>'+rows+'</tbody></table>'
     +'<div class="em-addrow no-pdf"><button class="btn gold" id="emAddRow">+ Ajouter une ligne</button></div>'
@@ -406,8 +416,8 @@ function ajusterEchelle(){
   sh.style.transform='none';
   var cw=wrap.clientWidth, sw=760;
   var sc=cw/sw;
-  if(sw*sc<560) sc=560/sw;   /* sous cette largeur la feuille scrolle au lieu de devenir illisible */
-  if(sc>1) sc=1;
+  if(sc>1) sc=1;             /* PC : taille réelle, jamais agrandie */
+  /* mobile : la feuille entière doit tenir, sans scroll ni zoom (Q10) */
   sh.style.transformOrigin='top left';
   sh.style.transform='scale('+sc+')';
   wrap.style.height=(sh.offsetHeight*sc)+'px';
@@ -438,6 +448,20 @@ function brancherEdition(){
       });
     }
   });
+
+  /* logo : un tap le retire ou le remet, sur cette feuille seulement */
+  var lg=$('[data-logo]',sheet);
+  if(lg) lg.addEventListener('click',function(){
+    var st=sheetById(curId); if(!st||st.locked) return;
+    st.data.entete=st.data.entete||{};
+    st.data.entete.logoOff = st.data.entete.logoOff ? 0 : 1;
+    sauverDouce(true);
+    toast(st.data.entete.logoOff?'Logo retiré de cette feuille':'Logo remis');
+  });
+
+  /* lieu : menu des lieux enregistrés + saisie libre */
+  var lz=$('[data-lieu]',sheet);
+  if(lz) lz.addEventListener('click',function(){ choisirLieu(); });
 
   /* formation : liste du catalogue */
   var fo=$('[data-formation]',sheet);
@@ -491,6 +515,30 @@ function brancherEdition(){
   });
 }
 /* ---------- présence : menu par case ---------- */
+function choisirLieu(){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var L=lieux();
+  var m=document.createElement('div'); m.className='confirm-bg em-menu';
+  m.innerHTML='<div class="confirm-box"><p>Lieu de la formation</p><div class="acts col">'
+    +L.map(function(x,i){ return '<button class="btn gold" data-lx="'+i+'">'+esc(x.nom)+(x.adr?'<small>'+esc(x.adr)+'</small>':'')+'</button>'; }).join('')
+    +'<button class="btn gold" data-lx="autre">Autre lieu…</button>'
+    +'<button class="btn cta" data-lx="non">Annuler</button></div></div>';
+  document.body.appendChild(m); requestAnimationFrame(function(){ m.classList.add('show'); });
+  m.addEventListener('click',function(e){
+    if(e.target===m) return m.remove();
+    var b=e.target.closest('[data-lx]'); if(!b) return;
+    var k=b.getAttribute('data-lx'); m.remove();
+    if(k==='non') return;
+    if(k==='autre'){
+      return miniFiche('Nom du lieu', '', function(nom){
+        miniFiche('Adresse', '', function(adr){
+          setPath(s,'entete.lieu', adr?(nom+'\n'+adr):nom); sauverDouce(true);
+        });
+      });
+    }
+    setPath(s,'entete.lieu', lieuTexte(L[+k])); sauverDouce(true);
+  });
+}
 function menuPresence(lid,slot){
   var s=sheetById(curId); if(!s||s.locked) return;
   var d=s.data, sig=(d.sign&&d.sign[lid]&&d.sign[lid][slot])||null;

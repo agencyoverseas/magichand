@@ -137,7 +137,7 @@ var SETTINGS_HTML=''
 +'<div class="acts"><button class="btn gold" id="btnEmSig">🖊️ Ma signature enregistrée</button></div>'
 +'<div id="emSigPrev" class="note" style="margin-top:8px"></div>'
 +'<div class="note">Ces valeurs servent de base à chaque nouvelle feuille. Elles restent modifiables feuille par feuille.</div>'
-+'<div class="subttl">🖼️ Feuille d\'émargement</div>'+'<div class="fld"><label>Logo de l\'organisme (affiché sur la feuille et la page élève)</label>'+'<div class="acts"><button class="btn gold" id="btnLogo">Choisir une image</button><button class="btn gold" id="btnLogoDel">Retirer</button></div>'+'<div id="logoPrev" class="logo-prev"></div></div>'+'<input type="file" id="logoFile" accept="image/*" style="display:none">'+'<div class="fld"><label>Signature du formateur (posée sur les feuilles)</label>'+'<div class="acts"><button class="btn gold" id="btnSig">Choisir une image</button><button class="btn gold" id="btnSigDel">Remettre celle d\'origine</button></div>'+'<div id="sigPrev" class="logo-prev"></div></div>'+'<input type="file" id="sigFile" accept="image/*" style="display:none">'+'<div class="subttl">💾 Données</div>'
++'<div class="subttl">📍 Lieux de formation</div>'+'<div id="lieuxList" class="lst"></div>'+'<div class="addrow"><input id="lieuNom" placeholder="Nom du lieu"><input id="lieuAdr" placeholder="Adresse"><button class="icon-btn add" id="lieuAdd">＋</button></div>'+'<div class="note">Le premier de la liste est le lieu par défaut des nouvelles feuilles.</div>'+'<div class="subttl">🖼️ Feuille d\'émargement</div>'+'<div class="fld"><label>Logo de l\'organisme (affiché sur la feuille et la page élève)</label>'+'<div class="acts"><button class="btn gold" id="btnLogo">Choisir une image</button><button class="btn gold" id="btnLogoDel">Retirer</button></div>'+'<div id="logoPrev" class="logo-prev"></div></div>'+'<input type="file" id="logoFile" accept="image/*" style="display:none">'+'<div class="fld"><label>Signature du formateur (posée sur les feuilles)</label>'+'<div class="acts"><button class="btn gold" id="btnSig">Choisir une image</button><button class="btn gold" id="btnSigDel">Remettre celle d\'origine</button></div>'+'<div id="sigPrev" class="logo-prev"></div></div>'+'<input type="file" id="sigFile" accept="image/*" style="display:none">'+'<div class="subttl">💾 Données</div>'
 +'<div class="acts"><button class="btn gold" id="btnExport">⬆️ Exporter (.json)</button><button class="btn gold" id="btnImport">⬇️ Importer (.json)</button></div>'
 +'<input type="file" id="impFile" accept="application/json" style="display:none">'
 +'<div class="note" style="margin-top:14px">Sauvegarde complète : catalogue, élèves, contacts closing et réglages. À garder hors-ligne.</div>';
@@ -529,6 +529,31 @@ function mountSettings(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=SE
       settings.emSignature=pad.png();save(LS.set,settings);m.remove();renderEmSig();toast('Signature enregistrée');
     };
   };
+  /* --- lieux de formation --- */
+  var LIEU_DEF=[{nom:'NOMEIA - Espace de coworking beauté',adr:'43 Rue Pierre Valette - 92240 Malakoff'},{nom:'Paris',adr:''}];
+  if(!settings.emLieux||!settings.emLieux.length){ settings.emLieux=LIEU_DEF.slice(); save(LS.set,settings); }
+  function renderLieux(){
+    var h=byId('lieuxList'); if(!h) return;
+    h.innerHTML=(settings.emLieux||[]).map(function(L,i){
+      return '<div class="item"><span class="nm"><b>'+esc(L.nom)+'</b>'+(L.adr?'<br><small>'+esc(L.adr)+'</small>':'')+'</span>'
+        +(i?'<button class="icon-btn" data-lieuup="'+i+'" title="Mettre par défaut">▲</button>':'<span class="pill ok">défaut</span>')
+        +'<button class="icon-btn" data-lieudel="'+i+'">🗑</button></div>';
+    }).join('')||'<div class="empty">Aucun lieu</div>';
+  }
+  byId('lieuAdd').onclick=function(){
+    var n=(byId('lieuNom').value||'').trim(), a=(byId('lieuAdr').value||'').trim();
+    if(!n) return toast('Nom du lieu requis');
+    settings.emLieux.push({nom:n,adr:a}); save(LS.set,settings);
+    byId('lieuNom').value=byId('lieuAdr').value=''; renderLieux(); toast('Lieu ajouté');
+  };
+  byId('lieuxList').addEventListener('click',function(e){
+    var u=e.target.closest('[data-lieuup]'), d=e.target.closest('[data-lieudel]');
+    if(u){ var i=+u.getAttribute('data-lieuup'); var L=settings.emLieux.splice(i,1)[0];
+      settings.emLieux.unshift(L); save(LS.set,settings); renderLieux(); toast('Lieu par défaut mis à jour'); return; }
+    if(d){ settings.emLieux.splice(+d.getAttribute('data-lieudel'),1); save(LS.set,settings); renderLieux(); }
+  });
+  renderLieux();
+
   /* --- logo + signature de la feuille d'émargement --- */
   function prev(id,src,vide){ var e=byId(id); if(e) e.innerHTML= src?('<img src="'+src+'" alt="">'):('<span class="mut">'+vide+'</span>'); }
   function refreshImgs(){
