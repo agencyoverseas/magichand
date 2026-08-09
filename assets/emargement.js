@@ -268,7 +268,7 @@ function fermer(){ var bg=byId('emBg'); if(bg) bg.remove(); curId=null; }
 
 function ouvrir(id){
   var s=sheetById(id); if(!s) return;
-  curId=id; fermer();
+  fermer(); curId=id;
   var bg=document.createElement('div'); bg.className='em-bg'; bg.id='emBg';
   bg.innerHTML='<div class="em-panel">'
     +'<div class="em-head">'
