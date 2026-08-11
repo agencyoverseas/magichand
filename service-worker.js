@@ -5,27 +5,20 @@
    fallback sur le cache si hors-ligne). Ne touche jamais aux
    requêtes Supabase (cross-origin, jamais interceptées).
    ============================================================ */
-var CACHE_VERSION = 'mh-shell-v9';
+var CACHE_VERSION = 'mh-shell-v1';
 var PRECACHE = [
   './',
   './index.html',
-  './signer.html',
   './manifest.json',
   './config.js',
   './assets/app.css',
-  './assets/emargement.css',
-  './assets/responsive.css',
   './assets/app.js',
   './assets/dashboard.js',
-  './assets/mh-api.js',
   './assets/sync.js',
-  './assets/emargement.js',
-  './assets/signer.js',
   './assets/notif.js',
   './assets/pwa.js',
   './assets/logo-full.png',
   './assets/logo-mi.png',
-  './assets/logo-magic-hands.png',
   './assets/cert-bg.png',
   './assets/attest-bg.png',
   './assets/sign.jpg',
@@ -36,7 +29,6 @@ var PRECACHE = [
   './assets/lib/html2canvas.min.js',
   './assets/lib/chart.min.js',
   './assets/lib/supabase.min.js',
-  './assets/lib/qrcode.min.js',
   './assets/fonts/open-sans-latin-400-normal.woff2',
   './assets/fonts/open-sans-latin-600-normal.woff2',
   './assets/fonts/open-sans-latin-700-normal.woff2',
@@ -67,15 +59,6 @@ self.addEventListener('activate', function(e){
 function isSameOrigin(url){
   try{ return new URL(url).origin === self.location.origin; }catch(e){ return false; }
 }
-
-/* version.json : toujours réseau, jamais de cache */
-self.addEventListener('fetch', function(e){
-  if(e.request.url.indexOf('version.json')>-1){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(function(){
-      return new Response('{}',{headers:{'Content-Type':'application/json'}});
-    }));
-  }
-}, false);
 
 self.addEventListener('fetch', function(e){
   var req = e.request;
