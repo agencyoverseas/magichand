@@ -371,7 +371,7 @@ function openFiche(key){
   var initials=((f.prenom||'')[0]||'')+((f.nom||'')[0]||'');
   var avInner=f.avatar?'<img src="'+f.avatar+'" alt="">':esc(initials.toUpperCase());
   var docsHtml=f.docs.map(function(d){
-    return '<div class="fdoc-row"><div class="fdoc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>'
+    return '<div class="fdoc-row is-clic" data-opendoc="'+d.id+'" data-fk="'+f.key+'" title="Ouvrir pour modifier"><div class="fdoc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>'
       +'<div class="fdoc-tx"><b>'+esc(DOC_TYPE_L[d.type]||'Certificat')+'</b><span>'+esc(d.formation||'—')+' · '+fmt(d.em)+'</span></div>'
       +'<button class="icon-btn" data-fixname="'+d.id+'" title="Corriger prénom/nom">✎</button>'
       +'<button class="icon-btn" data-deldoc="'+d.id+'" data-fk="'+f.key+'" title="Supprimer ce document">🗑</button></div>';
@@ -430,6 +430,33 @@ function ficheNewDoc(key){var f=findFiche(key);if(!f||!f.docs.length)return;
   closeFiche();
   if(byId('cert')){loadPrefill();if(window.MHgoGenerate)window.MHgoGenerate()}else if(window.MHgoGenerate)window.MHgoGenerate();
 }
+/* Rouvre un document déjà généré dans le formulaire, pour le corriger
+   puis le régénérer. Le document d'origine reste en place tant qu'on
+   n'enregistre pas : rien n'est écrasé par accident. */
+function openDocForEdit(docId){
+  var c=null;
+  for(var i=0;i<clients.length;i++){ if(String(clients[i].id)===String(docId)){ c=clients[i]; break; } }
+  if(!c){ toast('Document introuvable'); return; }
+  setPrefillFromClient(c);
+  try{ localStorage.setItem('mh_editing_doc', String(docId)); }catch(e){}
+  closeFiche();
+  if(byId('cert')){ loadPrefill(); }
+  if(window.MHgoGenerate) window.MHgoGenerate();
+  setTimeout(function(){
+    /* on rouvre sur le bon onglet : 0 = certificat, 1 = attestation */
+    var idx=((c.type||'cert')==='attest')?1:0;
+    var t=document.querySelector('.doctab[data-i="'+idx+'"]');
+    if(t && !t.classList.contains('on')) t.click();
+    toast('Document ouvert — modifie puis régénère');
+  },260);
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.closest && (t.closest('[data-fixname]')||t.closest('[data-deldoc]'))) return;
+  var row=t.closest && t.closest('[data-opendoc]');
+  if(row) openDocForEdit(row.getAttribute('data-opendoc'));
+});
+
 function deleteFiche(key){clients=clients.filter(function(x){return normName(x.prenom,x.nom)!==key});save(LS.cli,clients);fillEleveFilters();renderClients();updateStats();closeFiche();toast('Élève supprimé')}
 document.addEventListener('click',function(e){
   var dd=e.target.closest&&e.target.closest('[data-deldoc]');

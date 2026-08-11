@@ -251,10 +251,21 @@ function remplirFiltreForm(){
   sel.innerHTML='<option value="">Toutes formations</option>'+forms.map(function(f){return '<option>'+esc(f)+'</option>'}).join('');
   sel.value=cur;
 }
+/* Période de la feuille : soit l'en-tête saisi, soit les dates
+   réellement présentes dans les lignes (première → dernière). */
+function periodeDe(s){
+  var d=s.data||{};
+  if(d.entete && d.entete.periode) return d.entete.periode;
+  var L=(d.lignes||[]).filter(function(l){return l && l.date;});
+  if(!L.length) return '';
+  var a=L[0].date, b=L[L.length-1].date;
+  return (a===b) ? fmt(a) : (fmt(a)+' au '+fmt(b));
+}
 function carte(s){
   var d=s.data||{}, a=attendues(d), n=signees(d), st=statutDe(s);
   return '<div class="em-card" data-em="'+s.id+'">'
-   +'<div class="em-ci"><b>'+esc(nomDe(s))+'</b><span>'+esc(s.formation||'—')+'</span></div>'
+   +'<div class="em-ci"><b>'+esc(nomDe(s))+'</b><span>'+esc(s.formation||'—')+'</span>'
+      +(periodeDe(s)?'<span class="em-per">'+esc(periodeDe(s))+'</span>':'')+'</div>'
    +'<span class="em-prog '+st+'">'+n+'/'+a+'</span>'
    +(s.locked?'<span class="em-lock" title="Clôturée">🔒</span>':'')
    +'</div>';

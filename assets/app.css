@@ -417,7 +417,7 @@ input,select,textarea{font-family:inherit}
   .side{display:none}
   .appbar{display:flex}
   .bottomnav{display:flex}
-  .main{margin-left:0;padding:14px 14px 96px}
+  .main{margin-left:0;padding:14px 14px calc(96px + env(safe-area-inset-bottom))}
   .mhead{display:none}
   .kpis{grid-template-columns:1fr 1fr;gap:10px}
   .panels,.panels.eq{grid-template-columns:1fr;gap:14px}

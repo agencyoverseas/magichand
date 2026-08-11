@@ -27,7 +27,7 @@ html,body{ overflow-x:hidden; }
   .bottomnav .nitem span{ display:none; }          /* libellés masqués, icônes gardées */
   .bottomnav .nitem svg{ width:20px; height:20px; }
   .fab-wrap{ transform:translateY(-10px) scale(.86); }
-  .main{ padding:10px 18px 62px; }
+  .main{ padding:10px 18px calc(62px + env(safe-area-inset-bottom) + 24px); }
 
   /* l'appbar prend moins de place */
   .appbar{ height:48px; }

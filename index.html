@@ -210,6 +210,8 @@
     var m=byId('main'); if(m)m.scrollTo?m.scrollTo({top:0,behavior:'smooth'}):m.scrollTop=0;
     window.scrollTo({top:0,behavior:'smooth'});
   }
+  /* exposée pour le bouton retour Android (nav-history.js) */
+  window.showScr=showScr;
   function setHead(){var nv=document.querySelector('.appbar');var h=(nv&&getComputedStyle(nv).display!=='none')?nv.offsetHeight:0;document.documentElement.style.setProperty('--mh-head',h+'px');}
   function mhDocsFit(){
     var scr=byId('scr-docs'); if(!scr)return;
@@ -305,5 +307,6 @@
   <div class="acts"><button class="go" onclick="mhPwaInstall()">Installer</button><button class="later" onclick="mhPwaHide()">Plus tard</button></div>
 </div>
 <script src="assets/shell.js"></script>
+<script src="assets/nav-history.js"></script>
 </body>
 </html>
