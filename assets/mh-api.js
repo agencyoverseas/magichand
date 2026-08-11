@@ -77,6 +77,15 @@ var admin = {
               p_ligne:ligne, p_slot:slot, p_on:(on === undefined ? true : !!on)});
           },
   lienEleve:function(eleveId){ return rpc('mh_el_token', {p_ws:ws(), p_code:getCode(), p_eleve_id:eleveId}); },
+
+  /* Bibliothèque de signatures : celle déposée par l'élève sur son
+     lien est mémorisée automatiquement et réutilisable ensuite. */
+  sigList:  function(){ return rpc('mh_sig_list', {p_ws:ws(), p_code:getCode()}); },
+  sigPut:   function(eleveId, nom, img, pts){
+              return rpc('mh_sig_put', {p_ws:ws(), p_code:getCode(), p_eleve:eleveId,
+                p_nom:nom||'', p_img:img, p_pts:pts||[]});
+            },
+  sigDelete:function(eleveId){ return rpc('mh_sig_delete', {p_ws:ws(), p_code:getCode(), p_eleve:eleveId}); },
   stateGet:function(){ return rpc('mh_state_get', {p_ws:ws(), p_code:getCode()}); },
   statePut:function(d){ return rpc('mh_state_put', {p_ws:ws(), p_code:getCode(), p_data:d}); },
   stateRev:function(){ return rpc('mh_state_rev', {p_ws:ws(), p_code:getCode()}); }

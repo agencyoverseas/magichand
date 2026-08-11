@@ -361,7 +361,7 @@ function dessinerFeuille(){
           +(ab.motif?'<i class="motif">'+esc(MOTIF_L[ab.motif]||ab.motif)+'</i>':'')+'</td>';
       }
       if(!o) return '<td class="c-sig vide" data-stag="'+l.id+'|'+slot+'">—</td>';
-      return '<td class="c-sig'+(o.valide?' ok':'')+'" data-stag="'+l.id+'|'+slot+'">'
+      return '<td class="c-sig'+(o.valide?' ok':'')+(o.source==='admin'?' par-admin':(o.source==='reprise'?' par-reprise':''))+'" data-stag="'+l.id+'|'+slot+'">'
         +'<img src="'+o.img+'" alt="signature">'
         +'<em>'+esc((o.ts||'').replace('T',' ').slice(0,16))+(o.valide?' ✓':'')+'</em></td>';
     }
@@ -558,6 +558,12 @@ function menuPresence(lid,slot){
   m.innerHTML='<div class="confirm-box"><p>'+(sig?'Signature du '+esc((sig.ts||'').slice(0,10)):'Aucune signature')+'</p>'
     +'<div class="acts col">'
     +(sig?'<button class="btn '+(sig.valide?'gold':'cta')+'" data-mp="valider">'+(sig.valide?'Retirer la validation':'Valider la signature')+'</button>':'')
+    +(sig?'':'<button class="btn cta" data-mp="present">Marquer présent — écrire le nom</button>')
+    +((!sig && signatureDe(s))
+        ? '<button class="btn gold" data-mp="reprise">Reprendre la signature de '
+          +esc((signatureDe(s).nom||'l\'élève').split(' ')[0])
+          +' <i class="em-sub">déposée le '+esc(signatureDe(s).le||'')+'</i></button>'
+        : '')
     +'<button class="btn gold" data-mp="absent">Marquer absent</button>'
     +'<button class="btn gold" data-mp="excuse">Marquer excusé</button>'
     +((ab||sig)?'<button class="btn gold" data-mp="effacer">Effacer la case</button>':'')
@@ -572,7 +578,19 @@ function menuPresence(lid,slot){
     if(k==='valider') return basculerValidation(lid,slot);
     if(k==='effacer'){
       if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
+      if(d.sign&&d.sign[lid]) delete d.sign[lid][slot];
       sauverDouce(true); return;
+    }
+    if(k==='present') return marquerPresent(lid,slot);
+    if(k==='reprise'){
+      var ref=signatureDe(s); if(!ref) return;
+      d.sign=d.sign||{}; d.sign[lid]=d.sign[lid]||{};
+      d.sign[lid][slot]={img:ref.img, pts:ref.pts||[],
+        ts:new Date().toISOString().slice(0,19), nom:ref.nom||'',
+        source:'reprise', valide:true};
+      if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
+      sauverDouce(true); toast('Signature reprise');
+      return;
     }
     choisirMotif(function(motif){
       d.absents=d.absents||{}; d.absents[lid]=d.absents[lid]||{};
@@ -582,6 +600,73 @@ function menuPresence(lid,slot){
     });
   });
 }
+/* ------------------------------------------------------------
+   Marquer présent : le nom du stagiaire est écrit à la main
+   dans la case, comme sur le modèle papier. On garde la trace
+   que la saisie vient de l'administration et non de l'élève —
+   en contrôle, la différence compte.
+   ------------------------------------------------------------ */
+function marquerPresent(lid,slot){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var d=s.data||{};
+  var nomDefaut=((d.entete&&d.entete.stagiaire)||nomDe(s)||'').trim();
+
+  var m=document.createElement('div'); m.className='confirm-bg em-menu sg-pad';
+  m.innerHTML='<div class="confirm-box">'
+    +'<p>Écris le nom du stagiaire</p>'
+    +'<input class="em-nom-in" id="mpNom" value="'+esc(nomDefaut)+'" placeholder="Prénom NOM" autocomplete="off">'
+    +'<canvas id="mpC" class="sig-canvas" width="900" height="300"></canvas>'
+    +'<div class="em-hint">Écris le nom à la main dans le cadre, ou laisse vide pour porter le nom en écriture manuscrite automatique.</div>'
+    +'<div class="acts"><button class="btn gold" id="mpClr">Effacer</button>'
+    +'<button class="btn gold" id="mpNo">Annuler</button>'
+    +'<button class="btn cta" id="mpGo">Valider la présence</button></div>'
+    +'</div>';
+  document.body.appendChild(m);
+  requestAnimationFrame(function(){ m.classList.add('show'); });
+
+  var scrollY=window.scrollY; document.body.style.overflow='hidden';
+  function fermer(){ document.body.style.overflow=''; m.remove(); window.scrollTo(0,scrollY); }
+
+  var cv=m.querySelector('#mpC'), pad=signaturePad(cv);
+  m.querySelector('#mpClr').onclick=function(){ pad.clear(); };
+  m.querySelector('#mpNo').onclick=fermer;
+
+  m.querySelector('#mpGo').onclick=function(){
+    var nom=(m.querySelector('#mpNom').value||'').trim();
+    if(!nom){ toast('Indique le nom du stagiaire'); return; }
+    var img = pad.vide() ? nomManuscrit(nom) : pad.png();
+
+    d.sign=d.sign||{}; d.sign[lid]=d.sign[lid]||{};
+    d.sign[lid][slot]={
+      img:img, pts:pad.vide()?[]:pad.pts(),
+      ts:new Date().toISOString().slice(0,19),
+      nom:nom, source:'admin', valide:true
+    };
+    if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
+    sauverDouce(true);
+    fermer();
+    toast('Présence enregistrée pour '+nom);
+  };
+}
+
+/* Rend le nom en écriture manuscrite quand rien n'est dessiné. */
+function nomManuscrit(nom){
+  var c=document.createElement('canvas'); c.width=900; c.height=300;
+  var x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,900,300);
+  var taille=110;
+  x.fillStyle='#12251f';
+  do{
+    x.font='italic '+taille+'px "Segoe Script","Bradley Hand","Snell Roundhand",cursive';
+    if(x.measureText(nom).width<=800) break;
+    taille-=6;
+  } while(taille>40);
+  x.textAlign='center'; x.textBaseline='middle';
+  x.translate(450,160); x.rotate(-0.035);
+  x.fillText(nom,0,0);
+  return c.toDataURL('image/png');
+}
+
 function choisirMotif(cb){
   var m=document.createElement('div'); m.className='confirm-bg em-menu';
   m.innerHTML='<div class="confirm-box"><p>Motif</p><div class="acts col">'
@@ -612,6 +697,40 @@ function signerToutFormateur(){
   d.pied=d.pied||{}; d.pied.signature=1;
   sauverDouce(true); toast('Toutes les cases formateur signées');
 }
+/* ------------------------------------------------------------
+   Remplir toutes les cases stagiaire d'un coup, avec le nom en
+   écriture manuscrite. Réservé au report d'un émargement papier
+   déjà signé : chaque case porte source:'admin', ce qui la
+   distingue d'une signature faite par l'élève sur son lien.
+   Les cases déjà signées par l'élève ne sont jamais écrasées,
+   ni celles marquées absentes ou excusées.
+   ------------------------------------------------------------ */
+function remplirToutStagiaire(){
+  var s=sheetById(curId); if(!s||s.locked) return;
+  var d=s.data||{}, c=d.cols||{};
+  var nom=((d.entete&&d.entete.stagiaire)||nomDe(s)||'').trim();
+  if(!nom){ toast('Renseigne d\'abord le nom du stagiaire'); return; }
+
+  var img=nomManuscrit(nom), ts=new Date().toISOString().slice(0,19), n=0, sautees=0;
+  d.sign=d.sign||{};
+  (d.lignes||[]).forEach(function(l){
+    d.sign[l.id]=d.sign[l.id]||{};
+    ['matin','aprem'].forEach(function(sl){
+      var actif=(sl==='matin')?c.stagiaireM:c.stagiaireA;
+      if(!actif) return;
+      var ab=d.absents&&d.absents[l.id]&&d.absents[l.id][sl];
+      if(ab&&(ab.etat==='absent'||ab.etat==='excuse')){ sautees++; return; }
+      var ex=d.sign[l.id][sl];
+      if(ex&&ex.img&&ex.source!=='admin'){ sautees++; return; }  // signature de l'élève : intouchable
+      d.sign[l.id][sl]={img:img, pts:[], ts:ts, nom:nom, source:'admin', valide:true};
+      n++;
+    });
+  });
+  sauverDouce(true);
+  toast(n+' case'+(n>1?'s':'')+' remplie'+(n>1?'s':'')
+        +(sautees?' · '+sautees+' laissée'+(sautees>1?'s':'')+' de côté':''));
+}
+
 function ligne(id){ var s=sheetById(curId); var L=(s.data.lignes||[]); for(var i=0;i<L.length;i++) if(L[i].id===id) return L[i]; return null; }
 function isoDepuisFr(v){
   var m=(''+v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -731,6 +850,7 @@ function dessinerActions(){
     +'</div>'
     +'<div class="ac-rest" id="acRest">'
       +'<button class="btn gold" id="acQr">QR code</button>'
+      +'<button class="btn gold" id="acSignAllStag">Remplir toutes les cases stagiaire</button>'
       +'<button class="btn gold" id="acSignAll">Signer toutes les cases formateur</button>'
       +'<button class="btn gold" id="acCols">Colonnes</button>'
       +'<button class="btn gold" id="acLock">'+(s.locked?'Rouvrir':'Clôturer')+'</button>'
@@ -748,6 +868,13 @@ function dessinerActions(){
     +'</div>';
   byId('acMore').onclick=function(){ host.classList.toggle('open'); };
   byId('acSignAll').onclick=function(){ signerToutFormateur(); };
+  byId('acSignAllStag').onclick=function(){
+    var msg='Porter le nom du stagiaire sur toutes les cases restantes ?\n\n'
+           +'À n\'utiliser que pour reporter un émargement papier déjà signé. '
+           +'Les cases signées par l\'élève et les absences ne seront pas touchées.';
+    if(window.MH&&window.MH.confirmModal) window.MH.confirmModal(msg, remplirToutStagiaire);
+    else if(confirm(msg)) remplirToutStagiaire();
+  };
   byId('acPdf').onclick=function(e){ pdf(e.currentTarget); };
   byId('acWa').onclick=function(){ whatsapp(s, !!s.sent_at); };
   byId('acCopy').onclick=function(){ lienEleve(s).then(function(l){ copier(l); },function(e){ toast(e.message||'Lien indisponible'); }); };
@@ -952,6 +1079,22 @@ function openForEleve(eid,formation){
    nomDe() le lit en priorité. Elle pourra être rattachée à une
    fiche plus tard sans rien recréer.
    ------------------------------------------------------------ */
+/* ------------------------------------------------------------
+   Bibliothèque de signatures : celle que l'élève a déposée sur
+   son lien est mémorisée côté serveur et réutilisable ici.
+   Une case remplie par reprise porte source:'reprise' — elle se
+   distingue d'une signature déposée sur le créneau lui-même.
+   ------------------------------------------------------------ */
+var SIGS = {};
+function chargerSignatures(){
+  if(!MHapi.admin.sigList) return Promise.resolve({});
+  return MHapi.admin.sigList().then(function(l){
+    SIGS={}; (l||[]).forEach(function(x){ SIGS[x.eleve_id]=x; });
+    return SIGS;
+  }).catch(function(){ return SIGS; });
+}
+function signatureDe(s){ return s ? SIGS[s.eleve_id] || null : null; }
+
 function creerLibre(nom, formation){
   var eid = 'libre:' + Date.now().toString(36);
   var d = defautData({prenom:'', nom:''}, formation || '');
@@ -965,12 +1108,13 @@ function estLibre(s){ return String(s && s.eleve_id || '').indexOf('libre:') ===
 
 window.MHemarg={
   mount:mount, refresh:rafraichir, openForEleve:openForEleve,
+  signatures:chargerSignatures, signatureDe:signatureDe,
   creerLibre:creerLibre, estLibre:estLibre,
   signaturePad:signaturePad,
   stats:function(){ var t=0,s=0; sheets.forEach(function(x){ if(x.archived) return; t+=attendues(x.data||{}); s+=signees(x.data||{}); }); return {total:t,signees:s}; }
 };
 
 /* montage auto */
-function auto(){ if($('[data-mount="emargement"]')) mount('[data-mount="emargement"]'); }
+function auto(){ if($('[data-mount="emargement"]')){ mount('[data-mount="emargement"]'); chargerSignatures(); } }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',auto); else auto();
 })();
