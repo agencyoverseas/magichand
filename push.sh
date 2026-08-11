@@ -229,6 +229,37 @@ IGN
 fi
 
 # ------------------------------------------------------------
+# 5 ter. Empreinte de version
+#   version.json est réécrit à chaque envoi avec l'empreinte de
+#   tous les fichiers servis. Les appareils déjà ouverts la
+#   comparent toutes les 90 s et se mettent à jour tout seuls.
+# ------------------------------------------------------------
+# service-worker.js est exclu : il porte lui-même l'empreinte, l'inclure
+# ferait changer la version à chaque envoi même sans modification réelle.
+EMPREINTE="$(find . -type f \
+     ! -path './.git/*' ! -name 'version.json' ! -name 'push.sh' \
+     ! -name 'service-worker.js' \
+     -exec md5sum {} + 2>/dev/null | sort -k2 | md5sum | cut -c1-12)"
+[ -z "$EMPREINTE" ] && EMPREINTE="$(date +%s)"
+HORO="$(date '+%Y%m%d-%H%M%S')"
+cat > version.json <<JSON
+{
+  "hash": "$EMPREINTE",
+  "build": "$HORO-$EMPREINTE",
+  "date": "$(date '+%d/%m/%Y %H:%M')",
+  "note": "Genere automatiquement par push-magichand.sh. Toute modification de fichier change l'empreinte et declenche la mise a jour cote client."
+}
+JSON
+ok "version $HORO-$EMPREINTE"
+
+# le cache du service worker suit la même empreinte
+if [ -f service-worker.js ]; then
+  sed -i.bak "s/^var CACHE_VERSION = .*/var CACHE_VERSION = 'mh-shell-$EMPREINTE';/" service-worker.js \
+    && rm -f service-worker.js.bak
+  info "cache du service worker : mh-shell-$EMPREINTE"
+fi
+
+# ------------------------------------------------------------
 # 6. Commit
 # ------------------------------------------------------------
 git add -A

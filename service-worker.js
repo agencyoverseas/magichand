@@ -110,3 +110,18 @@ self.addEventListener('fetch', function(e){
     })
   );
 });
+
+
+/* ------------------------------------------------------------
+   Mise à jour immédiate sur demande de la page (assets/maj.js).
+   Sans ça, la nouvelle version reste en attente jusqu'à ce que
+   tous les onglets soient fermés.
+   ------------------------------------------------------------ */
+self.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+self.addEventListener('activate', function(){
+  self.clients.matchAll({type:'window'}).then(function(cs){
+    cs.forEach(function(c){ try{ c.postMessage({type:'NEW_VERSION'}); }catch(err){} });
+  });
+});
