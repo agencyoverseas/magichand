@@ -1,4 +1,6 @@
 {
- "build": "20260809-190026",
- "note": "Reecrit a chaque livraison : declenche la purge du cache et le rechargement."
+  "hash": "27376ed29ec6",
+  "build": "20260811-121736-27376ed29ec6",
+  "date": "11/08/2026 12:17",
+  "note": "Genere automatiquement par push-magichand.sh. Toute modification de fichier change l'empreinte et declenche la mise a jour cote client."
 }

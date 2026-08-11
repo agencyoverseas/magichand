@@ -370,3 +370,97 @@
 }
 .em-tbl td.par-reprise{position:relative}
 .em-menu .em-sub{display:block;font-style:normal;font-size:11px;opacity:.7;margin-top:2px}
+
+/* ============================================================
+   MODAL DE SIGNATURE — styles autonomes
+   L'ancien empilait confirm-bg + em-menu + sg-pad : trois jeux
+   de règles qui se contredisaient, d'où le cadre coupé en deux
+   et la feuille visible au travers. Celui-ci ne dépend de rien.
+   ============================================================ */
+body.mp-lock{overflow:hidden;position:relative}
+
+.mp-bg{
+  position:fixed;inset:0;z-index:9500;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+  background:rgba(8,45,37,.58);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  opacity:0;transition:opacity .22s;
+}
+.mp-bg.on{opacity:1}
+
+.mp-box{
+  width:100%;max-width:520px;
+  max-height:calc(100dvh - 32px);
+  background:#fff;border-radius:22px;
+  box-shadow:0 30px 70px -20px rgba(8,45,37,.65);
+  display:flex;flex-direction:column;overflow:hidden;
+  transform:translateY(14px) scale(.98);transition:transform .26s cubic-bezier(.2,.9,.25,1);
+}
+.mp-bg.on .mp-box{transform:none}
+
+.mp-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:16px 18px;border-bottom:1px solid rgba(15,74,60,.12);flex:0 0 auto;
+}
+.mp-head b{font-family:'Vollkorn',Georgia,serif;font-size:18px;color:#0F4A3C}
+.mp-x{
+  width:32px;height:32px;flex:0 0 auto;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(15,74,60,.16);background:#fff;color:#5B6E67;font-size:13px;
+}
+.mp-x:hover{background:#F1F5F3;color:#0F4A3C}
+
+.mp-body{padding:16px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto}
+.mp-lbl{
+  display:block;font-size:11px;letter-spacing:.11em;text-transform:uppercase;
+  color:#6E827B;font-weight:700;margin-bottom:6px;
+}
+.mp-in{
+  width:100%;padding:13px 15px;border-radius:12px;
+  border:1px solid rgba(15,74,60,.22);background:#fff;color:#132A23;
+  font:600 16px 'Open Sans',sans-serif;outline:none;transition:.18s;
+}
+.mp-in:focus{border-color:#D5B56F;box-shadow:0 0 0 3px rgba(213,181,111,.2)}
+
+.mp-reprise{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-top:12px;
+  padding:10px 12px;border-radius:12px;cursor:pointer;
+  border:1px solid rgba(213,181,111,.55);background:rgba(213,181,111,.10);
+  font:600 14px 'Open Sans',sans-serif;color:#0F4A3C;transition:.16s;
+}
+.mp-reprise:hover{background:rgba(213,181,111,.2)}
+.mp-reprise img{
+  width:74px;height:36px;object-fit:contain;flex:0 0 auto;
+  background:#fff;border:1px solid rgba(15,74,60,.12);border-radius:8px;
+}
+.mp-reprise small{display:block;font-weight:400;font-size:11.5px;color:#6E827B;margin-top:1px}
+
+.mp-lbl2{font-size:12.5px;color:#6E827B;margin:14px 0 7px;line-height:1.45}
+.mp-canvas{
+  display:block;width:100%;height:min(32dvh,215px);
+  background:#fff;border:2px dashed rgba(15,74,60,.30);border-radius:14px;
+  touch-action:none;aspect-ratio:auto;
+}
+
+.mp-foot{
+  display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:0 0 auto;
+  padding:14px 18px calc(16px + env(safe-area-inset-bottom));
+  border-top:1px solid rgba(15,74,60,.12);background:#fff;
+}
+.mp-b{
+  border:none;border-radius:999px;cursor:pointer;padding:14px 10px;
+  font:700 14.5px 'Open Sans',sans-serif;transition:.16s;
+}
+.mp-b.sec{background:#fff;border:1px solid rgba(15,74,60,.20);color:#3D5249}
+.mp-b.sec:hover{border-color:#D5B56F;color:#0F4A3C}
+.mp-b.pri{
+  grid-column:1 / -1;
+  background:linear-gradient(135deg,#0F4A3C,#082D25);color:#F5EFE3;
+  box-shadow:0 8px 20px -6px rgba(15,74,60,.5);
+}
+.mp-b.pri:active{transform:scale(.99)}
+
+@media (max-height:620px){
+  .mp-canvas{height:24dvh}
+  .mp-body{padding:12px 16px}
+}

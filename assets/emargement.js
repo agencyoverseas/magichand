@@ -610,46 +610,64 @@ function marquerPresent(lid,slot){
   var s=sheetById(curId); if(!s||s.locked) return;
   var d=s.data||{};
   var nomDefaut=((d.entete&&d.entete.stagiaire)||nomDe(s)||'').trim();
+  var ref=signatureDe(s);
 
-  var m=document.createElement('div'); m.className='confirm-bg em-menu sg-pad';
-  m.innerHTML='<div class="confirm-box">'
-    +'<p>Écris le nom du stagiaire</p>'
-    +'<input class="em-nom-in" id="mpNom" value="'+esc(nomDefaut)+'" placeholder="Prénom NOM" autocomplete="off">'
-    +'<canvas id="mpC" class="sig-canvas" width="900" height="300"></canvas>'
-    +'<div class="em-hint">Écris le nom à la main dans le cadre, ou laisse vide pour porter le nom en écriture manuscrite automatique.</div>'
-    +'<div class="acts"><button class="btn gold" id="mpClr">Effacer</button>'
-    +'<button class="btn gold" id="mpNo">Annuler</button>'
-    +'<button class="btn cta" id="mpGo">Valider la présence</button></div>'
+  var m=document.createElement('div'); m.className='mp-bg';
+  m.innerHTML='<div class="mp-box" role="dialog" aria-label="Signature du stagiaire">'
+    +'<div class="mp-head">'
+      +'<b>Signature du stagiaire</b>'
+      +'<button class="mp-x" id="mpX" aria-label="Fermer">&#10005;</button>'
+    +'</div>'
+    +'<div class="mp-body">'
+      +'<label class="mp-lbl" for="mpNom">Nom qui apparaîtra dans la case</label>'
+      +'<input id="mpNom" class="mp-in" value="'+esc(nomDefaut)+'" autocomplete="off">'
+      +(ref?'<button class="mp-reprise" id="mpRep">'
+            +'<img src="'+esc(ref.img)+'" alt="">'
+            +'<span>Reprendre sa signature<small>déposée le '+esc(ref.le||'')+'</small></span></button>':'')
+      +'<div class="mp-lbl2">Signe dans le cadre, ou laisse vide pour écrire le nom automatiquement</div>'
+      +'<canvas id="mpC" class="mp-canvas" width="900" height="300"></canvas>'
+    +'</div>'
+    +'<div class="mp-foot">'
+      +'<button class="mp-b sec" id="mpClr">Effacer</button>'
+      +'<button class="mp-b sec" id="mpNo">Annuler</button>'
+      +'<button class="mp-b pri" id="mpGo">Valider la présence</button>'
+    +'</div>'
     +'</div>';
   document.body.appendChild(m);
-  requestAnimationFrame(function(){ m.classList.add('show'); });
+  requestAnimationFrame(function(){ m.classList.add('on'); });
 
-  var scrollY=window.scrollY; document.body.style.overflow='hidden';
-  function fermer(){ document.body.style.overflow=''; m.remove(); window.scrollTo(0,scrollY); }
+  var scrollY=window.scrollY;
+  document.body.classList.add('mp-lock');
+  function fermer(){
+    document.body.classList.remove('mp-lock');
+    m.classList.remove('on');
+    setTimeout(function(){ m.remove(); window.scrollTo(0,scrollY); },200);
+  }
 
   var cv=m.querySelector('#mpC'), pad=signaturePad(cv);
   m.querySelector('#mpClr').onclick=function(){ pad.clear(); };
   m.querySelector('#mpNo').onclick=fermer;
+  m.querySelector('#mpX').onclick=fermer;
+  m.addEventListener('click',function(e){ if(e.target===m) fermer(); });
 
+  function poser(img,pts,src){
+    var nom=(m.querySelector('#mpNom').value||'').trim();
+    if(!nom){ m.querySelector('#mpNom').focus(); toast('Indique le nom du stagiaire'); return; }
+    d.sign=d.sign||{}; d.sign[lid]=d.sign[lid]||{};
+    d.sign[lid][slot]={img:img, pts:pts||[], ts:new Date().toISOString().slice(0,19),
+                       nom:nom, source:src, valide:true};
+    if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
+    sauverDouce(true); fermer();
+    toast(src==='reprise'?'Signature reprise':'Présence enregistrée pour '+nom);
+  }
+
+  if(ref) m.querySelector('#mpRep').onclick=function(){ poser(ref.img, ref.pts||[], 'reprise'); };
   m.querySelector('#mpGo').onclick=function(){
     var nom=(m.querySelector('#mpNom').value||'').trim();
-    if(!nom){ toast('Indique le nom du stagiaire'); return; }
-    var img = pad.vide() ? nomManuscrit(nom) : pad.png();
-
-    d.sign=d.sign||{}; d.sign[lid]=d.sign[lid]||{};
-    d.sign[lid][slot]={
-      img:img, pts:pad.vide()?[]:pad.pts(),
-      ts:new Date().toISOString().slice(0,19),
-      nom:nom, source:'admin', valide:true
-    };
-    if(d.absents&&d.absents[lid]) delete d.absents[lid][slot];
-    sauverDouce(true);
-    fermer();
-    toast('Présence enregistrée pour '+nom);
+    poser(pad.vide()?nomManuscrit(nom):pad.png(), pad.vide()?[]:pad.pts(), 'admin');
   };
 }
 
-/* Rend le nom en écriture manuscrite quand rien n'est dessiné. */
 function nomManuscrit(nom){
   var c=document.createElement('canvas'); c.width=900; c.height=300;
   var x=c.getContext('2d');
