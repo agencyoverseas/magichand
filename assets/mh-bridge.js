@@ -173,7 +173,13 @@
     });
   }
 
+  /* Ne renvoyer le catalogue que s'il a réellement changé : sans ça
+     chaque sauvegarde de l'app recréait une copie de chaque ligne. */
+  var catSignature = '';
   function pushCat(cat) {
+    var sig = JSON.stringify(cat);
+    if (sig === catSignature) return Promise.resolve();
+    catSignature = sig;
     var M = w.MHData, jobs = [];
     (cat.offers || []).forEach(function (o, i) {
       jobs.push(M.saveOffer({
@@ -194,7 +200,11 @@
     return Promise.all(jobs);
   }
 
+  var setSignature = '';
   function pushSettings(st) {
+    var sig = JSON.stringify(st);
+    if (sig === setSignature) return Promise.resolve();
+    setSignature = sig;
     var M = w.MHData, data = D(), jobs = [];
     var org = (data.org || [])[0];
     var e = st.etab || {};

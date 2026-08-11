@@ -735,7 +735,16 @@ function dessinerActions(){
       +'<button class="btn gold" id="acCols">Colonnes</button>'
       +'<button class="btn gold" id="acLock">'+(s.locked?'Rouvrir':'Clôturer')+'</button>'
       +'<button class="btn gold" id="acArch">'+(s.archived?'Désarchiver':'Archiver')+'</button>'
-      +(s.archived?'<button class="btn gold danger" id="acDel">Supprimer définitivement</button>':'')
+    +'</div>'
+    /* Suppression toujours accessible, en bas, hors du menu :
+       volontairement à part et en rouge pour qu'on ne la confonde
+       pas avec Archiver. */
+    +'<div class="em-danger">'
+      +'<button class="btn-del" id="acDel">'
+        +'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
+        +'<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'
+        +'Supprimer cette feuille</button>'
+      +'<div class="avert">Action définitive. La preuve de présence sera perdue.</div>'
     +'</div>';
   byId('acMore').onclick=function(){ host.classList.toggle('open'); };
   byId('acSignAll').onclick=function(){ signerToutFormateur(); };

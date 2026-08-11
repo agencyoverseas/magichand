@@ -288,3 +288,49 @@ html[data-theme="dark"] .creer-item .ic svg{color:var(--gold-l)}
 }
 .creer-acts .btn-pri:disabled{opacity:.6}
 .creer-acts .btn-sec{background:transparent;border:1px solid var(--line);color:var(--ink2)}
+
+/* ============================================================
+   CORRECTIFS DU 11/08 (soir)
+   ============================================================ */
+
+/* --- Bouton central : il était noyé dans la barre --- */
+.fab-wrap{position:relative;width:72px;flex:0 0 auto;display:flex;justify-content:center}
+.fab-btn{
+  width:60px;height:60px;border-radius:22px;border:none;cursor:pointer;
+  background:linear-gradient(140deg,var(--gold-l),var(--gold-d));
+  color:#2A2113;display:flex;align-items:center;justify-content:center;
+  transform:translateY(-24px);
+  box-shadow:0 12px 26px -6px rgba(183,151,80,.65),
+             0 0 0 5px var(--card-solid),
+             0 2px 8px rgba(0,0,0,.14);
+  transition:transform .2s cubic-bezier(.3,1.3,.6,1), box-shadow .2s;
+  position:relative;z-index:2;
+}
+.fab-btn:hover{transform:translateY(-28px) scale(1.05)}
+.fab-btn:active{transform:translateY(-21px) scale(.97)}
+.fab-btn svg{width:28px;height:28px;stroke-width:2.6}
+html[data-theme="dark"] .fab-btn{
+  box-shadow:0 12px 26px -6px rgba(0,0,0,.6),
+             0 0 0 5px var(--card-solid),
+             0 0 14px rgba(213,181,111,.35);
+}
+/* le creux dans lequel le bouton se pose */
+.bottomnav{overflow:visible}
+.bottomnav .nitem span{font-size:10px}
+
+/* --- Feuille d'émargement : bouton de suppression en bas --- */
+.em-danger{
+  margin:18px 0 calc(24px + env(safe-area-inset-bottom));
+  padding-top:16px;border-top:1px solid var(--line);
+}
+.em-danger .btn-del{
+  width:100%;padding:15px;border-radius:var(--radius-sm);cursor:pointer;
+  background:rgba(176,58,58,.08);border:1px solid rgba(176,58,58,.45);
+  color:var(--late);font:700 14.5px var(--sans);
+  display:flex;align-items:center;justify-content:center;gap:9px;transition:.18s;
+}
+.em-danger .btn-del:hover{background:var(--late);color:#fff;border-color:var(--late)}
+.em-danger .btn-del:active{transform:scale(.99)}
+.em-danger .avert{
+  font-size:12px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;
+}
