@@ -1,0 +1,13 @@
+COMMENT SAVOIR SI LA BONNE VERSION EST EN LIGNE
+================================================
+
+Ouvre magichand-chi.vercel.app et regarde le bouton en haut à gauche :
+
+   •••  (trois points)   ->  ANCIENNE version, la refonte n'est pas déployée
+   ☰   (trois barres)   ->  version refondue, correctifs présents
+
+Autres repères de la version refondue :
+  - un bouton lune (thème sombre) dans la barre du haut
+  - le menu du bouton central contient 5 entrées, pas 3
+  - la période de la session s'affiche sous chaque nom dans Émargement
+  - un document déjà généré s'ouvre au clic dans la fiche élève

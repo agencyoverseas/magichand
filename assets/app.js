@@ -105,7 +105,7 @@ var GEN_HTML=''
 +'    <div class="att-full" style="font-weight:700" id="a_made">Fait à Paris le —</div>'
 +'    <div class="att-sign"><div class="who">Fondateur et Responsable formation</div><div class="nm" id="a_signnm">Jordan Ly Pinto</div><img src="'+SIGN+'" alt="signature"></div>'
 +'   </div></div></div></div>'
-+'  <div class="acts"><button class="btn gold" id="btnCert">⬇️ Certificat</button><button class="btn gold" id="btnAtt">⬇️ Attestation</button><button class="btn cta" id="btnBoth">⬇️ Les 2 (1 PDF)</button></div>'
++'  <div class="acts"><button class="btn gold" id="btnSaveEleve">💾 Enregistrer l\'élève</button><button class="btn gold" id="btnCert">⬇️ Certificat</button><button class="btn gold" id="btnAtt">⬇️ Attestation</button><button class="btn cta" id="btnBoth">⬇️ Les 2 (1 PDF)</button></div>'
 +' </div>'
 +'</div>';
 
@@ -129,7 +129,15 @@ var SETTINGS_HTML=''
 +'<div class="fld"><label>Établissement</label><input id="setEtab"></div>'
 +'<div class="subttl">📍 Valeurs par défaut</div>'
 +'<div class="grid2"><div class="fld"><label>Lieu</label><input id="setLieu"></div><div class="fld"><label>Durée</label><input id="setDuree"></div></div>'
-+'<div class="subttl">💾 Données</div>'
++'<div class="subttl">✍️ Feuille d\'émargement</div>'
++'<div class="fld"><label>Coordonnées de l\'organisme (haut de la feuille)</label><textarea id="setEmOrg" rows="5"></textarea></div>'
++'<div class="fld"><label>Lieu de formation par défaut</label><input id="setEmLieu"></div>'
++'<div class="fld"><label>Bloc bas de page</label><textarea id="setEmPied" rows="3"></textarea></div>'
++'<div class="fld"><label>Bloc « L\'organisme de formation »</label><textarea id="setEmOrgBloc" rows="3"></textarea></div>'
++'<div class="acts"><button class="btn gold" id="btnEmSig">🖊️ Ma signature enregistrée</button></div>'
++'<div id="emSigPrev" class="note" style="margin-top:8px"></div>'
++'<div class="note">Ces valeurs servent de base à chaque nouvelle feuille. Elles restent modifiables feuille par feuille.</div>'
++'<div class="subttl">📍 Lieux de formation</div>'+'<div id="lieuxList" class="lst"></div>'+'<div class="addrow"><input id="lieuNom" placeholder="Nom du lieu"><input id="lieuAdr" placeholder="Adresse"><button class="icon-btn add" id="lieuAdd">＋</button></div>'+'<div class="note">Le premier de la liste est le lieu par défaut des nouvelles feuilles.</div>'+'<div class="subttl">🖼️ Feuille d\'émargement</div>'+'<div class="fld"><label>Logo de l\'organisme (affiché sur la feuille et la page élève)</label>'+'<div class="acts"><button class="btn gold" id="btnLogo">Choisir une image</button><button class="btn gold" id="btnLogoDel">Retirer</button></div>'+'<div id="logoPrev" class="logo-prev"></div></div>'+'<input type="file" id="logoFile" accept="image/*" style="display:none">'+'<div class="fld"><label>Signature du formateur (posée sur les feuilles)</label>'+'<div class="acts"><button class="btn gold" id="btnSig">Choisir une image</button><button class="btn gold" id="btnSigDel">Remettre celle d\'origine</button></div>'+'<div id="sigPrev" class="logo-prev"></div></div>'+'<input type="file" id="sigFile" accept="image/*" style="display:none">'+'<div class="subttl">💾 Données</div>'
 +'<div class="acts"><button class="btn gold" id="btnExport">⬆️ Exporter (.json)</button><button class="btn gold" id="btnImport">⬇️ Importer (.json)</button></div>'
 +'<input type="file" id="impFile" accept="application/json" style="display:none">'
 +'<div class="note" style="margin-top:14px">Sauvegarde complète : catalogue, élèves, contacts closing et réglages. À garder hors-ligne.</div>';
@@ -162,6 +170,16 @@ function mountGenerator(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=G
   byId('lieu').value=settings.lieuDef||'Paris';byId('duree').value=settings.dureeDef||'';byId('demit').value=today();
   fillFormation();buildCal();buildChips();
   ['prenom','nom','adresse','formation','dstart','dend','duree','lieu','demit'].forEach(function(id){var e=byId(id);if(e)e.addEventListener('input',function(){if(id==='dstart'||id==='dend')selSession=null;render()})});
+  byId('btnSaveEleve').onclick=function(){
+    var p=(byId('prenom').value||'').trim(), n=(byId('nom').value||'').trim();
+    if(!p||!n) return toast('Prénom et nom obligatoires');
+    var f=byId('formation'); if(f && !f.value) return toast('Choisis une formation');
+    var cle=normName(p,n)+'|'+((f&&f.value)||'');
+    var deja=clients.some(function(c){ return normName(c.prenom,c.nom)+'|'+(c.formation||'')===cle; });
+    if(deja) return toast('Cet élève est déjà enregistré sur cette formation');
+    saveClient('fiche');
+    toast('Élève enregistré');
+  };
   byId('btnCert').onclick=function(e){pdf('cert',e.currentTarget)};
   byId('btnAtt').onclick=function(e){pdf('att',e.currentTarget)};
   byId('btnBoth').onclick=function(e){pdf('both',e.currentTarget)};
@@ -186,6 +204,15 @@ function fitCert(){['c_nom','c_form'].forEach(function(id){var el=byId(id);if(!e
 function scaleOne(wrapId,docId,w,h){var wrap=byId(wrapId),doc=byId(docId);if(!wrap||!doc)return;var cw=wrap.clientWidth;if(!cw){doc.style.transform='scale(0)';wrap.style.height='0px';return}var s=cw/w;var mh=parseFloat(wrap.getAttribute('data-maxh')||'0');if(mh>0&&h*s>mh)s=mh/h;var offx=(cw-w*s)/2;if(offx<0)offx=0;doc.style.transformOrigin='top left';doc.style.transform='translateX('+offx+'px) scale('+s+')';wrap.style.height=(h*s)+'px'}
 function scaleDocs(){scaleOne('wrapCert','cert',1000,707);scaleOne('wrapAtt','attest',720,1016)}
 window.addEventListener('resize',scaleDocs);
+/* filet de sécurité : si la colonne change de taille pour une raison quelconque
+   (police chargée, sidebar repliée, zoom navigateur), on remet l'aperçu à l'échelle */
+if(window.ResizeObserver){
+  var _ro=new ResizeObserver(function(){ if(window.__docsFit) window.__docsFit(); else scaleDocs(); });
+  document.addEventListener('DOMContentLoaded',function(){
+    ['wrapCert','wrapAtt'].forEach(function(id){ var e=byId(id); if(e)_ro.observe(e); });
+    var gd=document.querySelector('#scr-docs .gen-docs'); if(gd)_ro.observe(gd);
+  });
+}
 
 /* calendar */
 var calRef=new Date(2026,7,1);
@@ -269,15 +296,35 @@ function fillEleveFilters(){var sel=byId('cliFiltForm');if(!sel)return;var cur=s
   var forms=[];clients.forEach(function(c){if(c.formation&&forms.indexOf(c.formation)<0)forms.push(c.formation)});
   sel.innerHTML='<option value="">Toutes formations</option>'+forms.map(function(f){return '<option>'+esc(f)+'</option>'}).join('');
   sel.value=cur}
+/* identifiant élève stable : survit à une correction d'orthographe du nom */
+function uid(){
+  if(window.crypto&&window.crypto.randomUUID)return window.crypto.randomUUID();
+  return 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+}
+function ensureEids(){
+  var byKey={},changed=false;
+  clients.forEach(function(c){var k=normName(c.prenom,c.nom);if(c.eid&&!byKey[k])byKey[k]=c.eid});
+  clients.forEach(function(c){
+    var k=normName(c.prenom,c.nom);
+    if(!byKey[k]){byKey[k]=uid();changed=true}
+    if(c.eid!==byKey[k]){c.eid=byKey[k];changed=true}
+  });
+  if(changed)save(LS.cli,clients);
+  return changed;
+}
 /* regroupe tous les documents (clients[]) en fiches élève par Prénom+Nom */
 function buildFiches(){
   var map={};
+  ensureEids();
   clients.forEach(function(c){
     var key=normName(c.prenom,c.nom);
-    if(!map[key])map[key]={key:key,prenom:c.prenom,nom:c.nom,avatar:null,adresse:'',formations:[],docs:[]};
+    if(!map[key])map[key]={key:key,eid:c.eid,prenom:c.prenom,nom:c.nom,avatar:null,adresse:'',tel:'',email:'',formations:[],docs:[]};
     var f=map[key];
+    if(!f.eid&&c.eid)f.eid=c.eid;
     if(c.avatar)f.avatar=c.avatar;
     if(c.adresse&&!f.adresse)f.adresse=c.adresse;
+    if(c.tel&&!f.tel)f.tel=c.tel;
+    if(c.email&&!f.email)f.email=c.email;
     if(c.formation&&f.formations.indexOf(c.formation)<0)f.formations.push(c.formation);
     f.docs.push(c);
   });
@@ -324,7 +371,7 @@ function openFiche(key){
   var initials=((f.prenom||'')[0]||'')+((f.nom||'')[0]||'');
   var avInner=f.avatar?'<img src="'+f.avatar+'" alt="">':esc(initials.toUpperCase());
   var docsHtml=f.docs.map(function(d){
-    return '<div class="fdoc-row"><div class="fdoc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>'
+    return '<div class="fdoc-row is-clic" data-opendoc="'+d.id+'" data-fk="'+f.key+'" title="Ouvrir pour modifier"><div class="fdoc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>'
       +'<div class="fdoc-tx"><b>'+esc(DOC_TYPE_L[d.type]||'Certificat')+'</b><span>'+esc(d.formation||'—')+' · '+fmt(d.em)+'</span></div>'
       +'<button class="icon-btn" data-fixname="'+d.id+'" title="Corriger prénom/nom">✎</button>'
       +'<button class="icon-btn" data-deldoc="'+d.id+'" data-fk="'+f.key+'" title="Supprimer ce document">🗑</button></div>';
@@ -339,7 +386,12 @@ function openFiche(key){
         +'<div class="fiche-av" id="ficheAv">'+avInner+'<input type="file" accept="image/*" id="ficheAvInput" style="display:none"></div>'
         +'<h3>'+esc(f.prenom)+' '+esc((f.nom||'').toUpperCase())+'</h3>'
         +(f.adresse?'<p class="fiche-adr">'+esc(f.adresse)+'</p>':'')
-        +'<button class="btn cta" id="ficheNewDoc" style="width:100%;margin:14px 0">+ Nouveau document</button>'
+        +'<div class="grid2" style="margin-top:12px">'
+          +'<div class="fld"><label>Téléphone (WhatsApp)</label><input id="ficheTel" placeholder="0690 00 00 00" value="'+esc(f.tel||'')+'"></div>'
+          +'<div class="fld"><label>Email</label><input id="ficheMail" placeholder="prenom@mail.fr" value="'+esc(f.email||'')+'"></div>'
+        +'</div>'
+        +'<button class="btn cta" id="ficheNewDoc" style="width:100%;margin:14px 0 8px">+ Nouveau document</button>'
+        +'<button class="btn gold" id="ficheEmarg" style="width:100%;margin:0 0 14px">✍️ Feuille d\'émargement</button>'
         +'<div class="subttl">📄 Documents générés ('+f.docs.length+')</div>'
         +'<div id="ficheDocs">'+docsHtml+'</div>'
       +'</div>'
@@ -351,6 +403,20 @@ function openFiche(key){
   byId('ficheAv').onclick=function(){byId('ficheAvInput').click()};
   byId('ficheAvInput').onchange=function(e){onFicheAvatar(e,f.key)};
   byId('ficheNewDoc').onclick=function(){ficheNewDoc(f.key)};
+  ['ficheTel','ficheMail'].forEach(function(id){
+    var e=byId(id); if(!e)return;
+    e.addEventListener('change',function(){
+      var champ=(id==='ficheTel')?'tel':'email', v=e.value.trim();
+      clients.forEach(function(c){if(normName(c.prenom,c.nom)===f.key)c[champ]=v});
+      save(LS.cli,clients);toast('Coordonnées enregistrées');
+    });
+  });
+  var be=byId('ficheEmarg');
+  if(be)be.onclick=function(){
+    if(!window.MHemarg){toast('Module émargement indisponible');return}
+    closeFiche();
+    window.MHemarg.openForEleve(f.eid,f.formations[0]||'');
+  };
   byId('ficheDelAll').onclick=function(){confirmModal('Supprimer '+f.prenom+' '+f.nom+' et tous ses documents ('+f.docs.length+') ?',function(){deleteFiche(f.key)})};
 }
 function onFicheAvatar(e,key){var file=e.target.files[0];if(!file)return;
@@ -364,6 +430,33 @@ function ficheNewDoc(key){var f=findFiche(key);if(!f||!f.docs.length)return;
   closeFiche();
   if(byId('cert')){loadPrefill();if(window.MHgoGenerate)window.MHgoGenerate()}else if(window.MHgoGenerate)window.MHgoGenerate();
 }
+/* Rouvre un document déjà généré dans le formulaire, pour le corriger
+   puis le régénérer. Le document d'origine reste en place tant qu'on
+   n'enregistre pas : rien n'est écrasé par accident. */
+function openDocForEdit(docId){
+  var c=null;
+  for(var i=0;i<clients.length;i++){ if(String(clients[i].id)===String(docId)){ c=clients[i]; break; } }
+  if(!c){ toast('Document introuvable'); return; }
+  setPrefillFromClient(c);
+  try{ localStorage.setItem('mh_editing_doc', String(docId)); }catch(e){}
+  closeFiche();
+  if(byId('cert')){ loadPrefill(); }
+  if(window.MHgoGenerate) window.MHgoGenerate();
+  setTimeout(function(){
+    /* on rouvre sur le bon onglet : 0 = certificat, 1 = attestation */
+    var idx=((c.type||'cert')==='attest')?1:0;
+    var t=document.querySelector('.doctab[data-i="'+idx+'"]');
+    if(t && !t.classList.contains('on')) t.click();
+    toast('Document ouvert — modifie puis régénère');
+  },260);
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.closest && (t.closest('[data-fixname]')||t.closest('[data-deldoc]'))) return;
+  var row=t.closest && t.closest('[data-opendoc]');
+  if(row) openDocForEdit(row.getAttribute('data-opendoc'));
+});
+
 function deleteFiche(key){clients=clients.filter(function(x){return normName(x.prenom,x.nom)!==key});save(LS.cli,clients);fillEleveFilters();renderClients();updateStats();closeFiche();toast('Élève supprimé')}
 document.addEventListener('click',function(e){
   var dd=e.target.closest&&e.target.closest('[data-deldoc]');
@@ -413,8 +506,17 @@ function setIf(id,v){var e=byId(id);if(e)e.value=v}
 function saveClient(kind){var pre=val('prenom'),no=val('nom');if(!pre||!no)return;
   var rec={id:Date.now()+''+Math.floor(Math.random()*99),ts:Date.now(),prenom:pre,nom:no,adresse:val('adresse'),formation:val('formation'),ds:val('dstart'),de:val('dend'),duree:val('duree'),lieu:val('lieu'),em:val('demit'),type:kind||'cert'};
   var key=normName(pre,no);
-  var av=null;clients.forEach(function(c){if(!av&&normName(c.prenom,c.nom)===key&&c.avatar)av=c.avatar});
+  var av=null,eid=null,tel=null,mail=null;
+  clients.forEach(function(c){
+    if(normName(c.prenom,c.nom)!==key)return;
+    if(!av&&c.avatar)av=c.avatar;
+    if(!eid&&c.eid)eid=c.eid;
+    if(!tel&&c.tel)tel=c.tel;
+    if(!mail&&c.email)mail=c.email;
+  });
   if(av)rec.avatar=av;
+  rec.eid=eid||uid();
+  if(tel)rec.tel=tel; if(mail)rec.email=mail;
   clients.unshift(rec);save(LS.cli,clients);fillEleveFilters();renderClients();updateStats()}
 function exportCsv(){if(!clients.length)return toast('Base vide');
   var head=['Prénom','Nom','Formation','Du','Au','Durée','Lieu','Émission','Adresse'];
@@ -444,8 +546,82 @@ function mountSettings(sel){var m=$(sel);if(!m||m._mounted)return;m.innerHTML=SE
   byId('setFormateur').value=settings.formateur;byId('setEtab').value=settings.etab;byId('setLieu').value=settings.lieuDef;byId('setDuree').value=settings.dureeDef;
   ['setFormateur','setEtab','setLieu','setDuree'].forEach(function(id){byId(id).addEventListener('input',function(){
     settings.formateur=val('setFormateur');settings.etab=val('setEtab');settings.lieuDef=val('setLieu');settings.dureeDef=val('setDuree');save(LS.set,settings);render()})});
+  var EMF={setEmOrg:'emOrganisme',setEmLieu:'emLieu',setEmPied:'emPied',setEmOrgBloc:'emOrgBloc'};
+  Object.keys(EMF).forEach(function(id){
+    var e=byId(id); if(!e)return;
+    e.value=settings[EMF[id]]||'';
+    e.addEventListener('input',function(){settings[EMF[id]]=e.value;save(LS.set,settings)});
+  });
+  renderEmSig();
+  var bs=byId('btnEmSig');
+  if(bs)bs.onclick=function(){
+    if(settings.emSignature){
+      confirmModal('Remplacer ou supprimer la signature enregistrée ?',function(){
+        settings.emSignature=null;save(LS.set,settings);renderEmSig();toast('Signature supprimée');
+      });
+      return;
+    }
+    if(!window.MHemarg||!window.MHemarg.signaturePad){toast('Module émargement indisponible');return}
+    var m=document.createElement('div');m.className='confirm-bg show';
+    m.innerHTML='<div class="confirm-box"><p>Signe une fois : elle sera réutilisable sur toutes les feuilles.</p>'
+      +'<canvas id="stC" class="sig-canvas" width="600" height="200"></canvas>'
+      +'<div class="acts"><button class="btn gold" id="stClr">Effacer</button><button class="btn gold" id="stN">Annuler</button><button class="btn cta" id="stO">Enregistrer</button></div></div>';
+    document.body.appendChild(m);
+    var pad=window.MHemarg.signaturePad(m.querySelector('#stC'));
+    m.querySelector('#stClr').onclick=function(){pad.clear()};
+    m.querySelector('#stN').onclick=function(){m.remove()};
+    m.querySelector('#stO').onclick=function(){
+      if(pad.vide()){toast('Signature vide');return}
+      settings.emSignature=pad.png();save(LS.set,settings);m.remove();renderEmSig();toast('Signature enregistrée');
+    };
+  };
+  /* --- lieux de formation --- */
+  var LIEU_DEF=[{nom:'NOMEIA - Espace de coworking beauté',adr:'43 Rue Pierre Valette - 92240 Malakoff'},{nom:'Paris',adr:''}];
+  if(!settings.emLieux||!settings.emLieux.length){ settings.emLieux=LIEU_DEF.slice(); save(LS.set,settings); }
+  function renderLieux(){
+    var h=byId('lieuxList'); if(!h) return;
+    h.innerHTML=(settings.emLieux||[]).map(function(L,i){
+      return '<div class="item"><span class="nm"><b>'+esc(L.nom)+'</b>'+(L.adr?'<br><small>'+esc(L.adr)+'</small>':'')+'</span>'
+        +(i?'<button class="icon-btn" data-lieuup="'+i+'" title="Mettre par défaut">▲</button>':'<span class="pill ok">défaut</span>')
+        +'<button class="icon-btn" data-lieudel="'+i+'">🗑</button></div>';
+    }).join('')||'<div class="empty">Aucun lieu</div>';
+  }
+  byId('lieuAdd').onclick=function(){
+    var n=(byId('lieuNom').value||'').trim(), a=(byId('lieuAdr').value||'').trim();
+    if(!n) return toast('Nom du lieu requis');
+    settings.emLieux.push({nom:n,adr:a}); save(LS.set,settings);
+    byId('lieuNom').value=byId('lieuAdr').value=''; renderLieux(); toast('Lieu ajouté');
+  };
+  byId('lieuxList').addEventListener('click',function(e){
+    var u=e.target.closest('[data-lieuup]'), d=e.target.closest('[data-lieudel]');
+    if(u){ var i=+u.getAttribute('data-lieuup'); var L=settings.emLieux.splice(i,1)[0];
+      settings.emLieux.unshift(L); save(LS.set,settings); renderLieux(); toast('Lieu par défaut mis à jour'); return; }
+    if(d){ settings.emLieux.splice(+d.getAttribute('data-lieudel'),1); save(LS.set,settings); renderLieux(); }
+  });
+  renderLieux();
+
+  /* --- logo + signature de la feuille d'émargement --- */
+  function prev(id,src,vide){ var e=byId(id); if(e) e.innerHTML= src?('<img src="'+src+'" alt="">'):('<span class="mut">'+vide+'</span>'); }
+  function refreshImgs(){
+    prev('logoPrev',settings.emLogo||'','Aucun logo — le bloc reste vide sur la feuille');
+    prev('sigPrev',settings.emSignature||((window.MH_ASSETS&&window.MH_ASSETS.sign)||'assets/sign.jpg'),'—');
+  }
+  function lire(file,cb){ var r=new FileReader(); r.onload=function(){ cb(r.result); }; r.readAsDataURL(file); }
+  byId('btnLogo').onclick=function(){ byId('logoFile').click(); };
+  byId('logoFile').onchange=function(e){ var f=e.target.files[0]; if(!f)return;
+    lire(f,function(u){ settings.emLogo=u; save(LS.set,settings); refreshImgs(); toast('Logo enregistré'); }); e.target.value=''; };
+  byId('btnLogoDel').onclick=function(){ delete settings.emLogo; save(LS.set,settings); refreshImgs(); toast('Logo retiré'); };
+  byId('btnSig').onclick=function(){ byId('sigFile').click(); };
+  byId('sigFile').onchange=function(e){ var f=e.target.files[0]; if(!f)return;
+    lire(f,function(u){ settings.emSignature=u; save(LS.set,settings); refreshImgs(); toast('Signature enregistrée'); }); e.target.value=''; };
+  byId('btnSigDel').onclick=function(){ delete settings.emSignature; save(LS.set,settings); refreshImgs(); toast('Signature d\'origine rétablie'); };
+  refreshImgs();
   byId('btnExport').onclick=exportJSON;byId('btnImport').onclick=function(){byId('impFile').click()};
   byId('impFile').onchange=importJSON}
+function renderEmSig(){var p=byId('emSigPrev');if(!p)return;
+  p.innerHTML=settings.emSignature
+    ?'<img src="'+settings.emSignature+'" alt="signature" style="max-height:60px;background:#fff;border-radius:8px;padding:4px">'
+    :'Aucune signature enregistrée pour l\'instant.'}
 function exportJSON(){var data={v:1,exported:new Date().toISOString(),catalogue:cat,clients:clients,contacts:contacts,settings:settings,gencount:gencount};
   dl(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'magic-hands-data.json');toast('Export .json')}
 function importJSON(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();
@@ -526,6 +702,7 @@ function saveProspect(){var n=((byId('pfNom')||{}).value||'');if(!n.trim()){toas
 function renderCommissions(){var won=contacts.filter(function(c){return c.stage==='won'});var wm=won.filter(function(c){return thisMonth(c.ts)});var caM=wm.reduce(function(s,c){return s+(c.amt||0)},0);var vM=wm.length;var unlocked=vM>=5;var acq=unlocked?Math.round(caM*0.1):0;var att=unlocked?0:Math.round(caM*0.1);var pot=Math.round(caSum()*0.1);var pts=won.reduce(function(s,c){return s+ptsForForm(c.form)},0);setText('comVentes',vM+' / 5');setText('comAcquise',nfmt(acq)+' €');setText('comAttente',nfmt(att)+' €');setText('comPotentiel',nfmt(pot)+' €');setText('comPoints',pts);setText('comGrade',gradeFor(pts))}
 window.MH={mountGenerator:mountGenerator,mountCatalogue:mountCatalogue,mountEleves:mountEleves,mountSettings:mountSettings,mountClosing:mountClosing,
   scaleDocs:scaleDocs,refreshAll:refreshAll,render:render,toast:toast,exportJSON:exportJSON,normName:normName,openFiche:openFiche,
+  fiches:buildFiches,ensureEids:ensureEids,confirmModal:confirmModal,fmt:fmt,today:today,
   data:function(){return {cat:cat,clients:clients,contacts:contacts,settings:settings,gencount:gencount,ca:caSum()}}};
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',autoInit);else autoInit();

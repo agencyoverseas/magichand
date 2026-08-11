@@ -1,0 +1,101 @@
+/* ============================================================
+   tokens.css — Charte NexusAI (vert / or), mode clair + sombre.
+   Chargé AVANT app.css : il redéfinit les variables existantes
+   sans toucher à la structure. Les documents officiels
+   (certificat, attestation, émargement) sont exclus du verre
+   à l'impression pour rester nets en PDF.
+   ============================================================ */
+
+:root{
+  /* --- palette NexusAI --- */
+  --green:#0F4A3C; --green-2:#0F493B; --green-deep:#082D25;
+  --gold:#D5B56F; --gold-l:#DDBE7A; --gold-d:#B79750; --olive:#C9A85F;
+  --cream:#F5EFE3; --orange:#E8954C;
+
+  /* --- surfaces --- */
+  --bg:#EEF2F0; --bg2:#E4EBE7;
+  --card:rgba(255,255,255,.72);
+  --card-solid:#ffffff;
+  --line:rgba(15,74,60,.12);
+  --inp-bd:rgba(15,74,60,.16);
+
+  /* --- texte --- */
+  --ink:#132A23; --ink2:#3D5249; --muted:#6E827B;
+
+  /* --- états --- */
+  --ok:#3E8E5A; --ok-soft:rgba(62,142,90,.14);
+  --wait:#B4691F; --wait-soft:rgba(232,149,76,.16);
+  --late:#B03A3A; --late-soft:rgba(176,58,58,.13);
+  --green-soft:rgba(15,74,60,.10);
+
+  /* --- formes --- */
+  --radius:22px; --radius-sm:14px; --radius-xs:10px;
+  --shadow:0 10px 30px rgba(15,74,60,.10), 0 2px 6px rgba(15,74,60,.05);
+  --shadow-s:0 4px 14px rgba(15,74,60,.07);
+  --blur:blur(16px) saturate(150%);
+
+  /* --- typo --- */
+  --serif:'Vollkorn',Georgia,serif;
+  --sans:'Open Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+
+html[data-theme="dark"]{
+  --bg:#0A1A16; --bg2:#0F2620;
+  --card:rgba(20,48,40,.62);
+  --card-solid:#14302A;
+  --line:rgba(213,181,111,.18);
+  --inp-bd:rgba(213,181,111,.24);
+  --ink:#EDF3F0; --ink2:#C3D2CC; --muted:#93A9A2;
+  --green-soft:rgba(213,181,111,.12);
+  --shadow:0 10px 30px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.25);
+  --shadow-s:0 4px 14px rgba(0,0,0,.28);
+}
+
+/* ---------- fond global ---------- */
+body{
+  background:
+    radial-gradient(1100px 600px at 12% -8%, rgba(213,181,111,.20), transparent 60%),
+    radial-gradient(900px 500px at 105% 8%, rgba(15,74,60,.16), transparent 62%),
+    linear-gradient(170deg,var(--bg) 0%,var(--bg2) 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+  font-family:var(--sans);
+}
+
+/* ---------- titres en serif doré ---------- */
+h1,h2,h3,h4,.serif{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;color:var(--gold-d)}
+html[data-theme="dark"] h1,html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,html[data-theme="dark"] h4{color:var(--gold)}
+
+/* ---------- verre ---------- */
+.card,.kpi,.panel,.sheet,.drawer,.appbar,.bottomnav,.side{
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+}
+
+/* ---------- focus clavier ---------- */
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:8px}
+
+/* ---------- mouvement réduit ---------- */
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+
+/* ============================================================
+   IMPRESSION — le verre est neutralisé sur les documents pour
+   que les PDF sortent nets (html2canvas capte les fonds tels
+   qu'ils sont affichés).
+   ============================================================ */
+@media print{
+  .card,.kpi,.panel,.em-sheet,.cert,.attest{
+    backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+    background-color:#fff!important;box-shadow:none!important;
+  }
+  .appbar,.bottomnav,.side,.plussheet,.drawer,.mh-fab,.em-acts,.acts{display:none!important}
+  body{background:#fff!important}
+}
+/* Pendant la capture html2canvas : même neutralisation */
+body.capturing .em-sheet,
+body.capturing .cert,
+body.capturing .attest{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
