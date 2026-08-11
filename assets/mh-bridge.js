@@ -155,6 +155,10 @@
 
     return chain.then(function (eleveId) {
       return M.saveDoc({
+        // marqué « auto » : la base ne recréera pas un document déjà
+        // présent. Un document créé à la main depuis l'app n'a pas
+        // ce marqueur et n'est donc jamais bloqué.
+        auto: true,
         eleve_id: eleveId || (eleve && eleve.id) || '',
         type: c.type || 'cert', formation: c.formation || '',
         date_debut: c.ds || '', date_fin: c.de || '', duree: c.duree || '',
@@ -193,8 +197,11 @@
       }));
     });
     (cat.sessions || []).forEach(function (s) {
+      // une session sans dates n'a pas de sens : on ne l'envoie pas
+      if (!s || (!s.s && !s.e)) return;
       jobs.push(M.saveSession({
-        id: UUID.test(s.id || '') ? s.id : '', libelle: s.l || '', date_debut: s.s || '', date_fin: s.e || ''
+        id: UUID.test(s.id || '') ? s.id : '', libelle: s.l || '',
+        date_debut: s.s || '', date_fin: s.e || ''
       }));
     });
     return Promise.all(jobs);
