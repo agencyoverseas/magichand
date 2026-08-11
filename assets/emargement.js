@@ -936,8 +936,27 @@ function openForEleve(eid,formation){
   if(loaded) { renderList(); go(); }
   else charger().then(function(){ renderList(); go(); }).catch(function(e){ toast(e.message); });
 }
+/* ------------------------------------------------------------
+   Feuille libre : créée sans passer par une fiche élève.
+   L'identifiant commence par « libre: » — la feuille existe seule,
+   le nom du stagiaire est saisi directement dans l'en-tête, et
+   nomDe() le lit en priorité. Elle pourra être rattachée à une
+   fiche plus tard sans rien recréer.
+   ------------------------------------------------------------ */
+function creerLibre(nom, formation){
+  var eid = 'libre:' + Date.now().toString(36);
+  var d = defautData({prenom:'', nom:''}, formation || '');
+  d.entete.stagiaire = (nom || '').trim();
+  return MHapi.admin.save(eid, formation || '', d, {statut:'brouillon'}).then(function(row){
+    if(row){ sheets.push(row); rafraichir(); }
+    return row;
+  });
+}
+function estLibre(s){ return String(s && s.eleve_id || '').indexOf('libre:') === 0; }
+
 window.MHemarg={
   mount:mount, refresh:rafraichir, openForEleve:openForEleve,
+  creerLibre:creerLibre, estLibre:estLibre,
   signaturePad:signaturePad,
   stats:function(){ var t=0,s=0; sheets.forEach(function(x){ if(x.archived) return; t+=attendues(x.data||{}); s+=signees(x.data||{}); }); return {total:t,signees:s}; }
 };

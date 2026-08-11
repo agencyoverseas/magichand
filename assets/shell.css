@@ -206,3 +206,85 @@ html[data-theme="dark"] .em-per{color:var(--gold-l)}
 .fdoc-row.is-clic .fdoc-tx b::after{
   content:'  ✎';font-size:11px;color:var(--muted);vertical-align:1px;
 }
+
+/* ============================================================
+   MENU DE CRÉATION (bouton central) + correctif de superposition
+   ============================================================ */
+
+/* La barre du bas passait DEVANT le menu : sa dernière entrée
+   était recouverte. Le menu et son fond repassent au-dessus. */
+.plussheet-bg{z-index:140!important}
+.plussheet{z-index:150!important}
+
+.creer-bg{
+  position:fixed;inset:0;z-index:140;
+  background:rgba(8,45,37,.5);backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:.24s;
+}
+.creer-bg.show{opacity:1;pointer-events:auto}
+
+.creer-sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:150;
+  background:var(--card-solid);
+  border-top:1px solid var(--line);border-radius:26px 26px 0 0;
+  padding:12px 16px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 -18px 44px -14px rgba(15,45,35,.4);
+  transform:translateY(104%);transition:transform .3s cubic-bezier(.2,.9,.25,1);
+  max-height:min(86dvh,640px);overflow-y:auto;
+}
+.creer-sheet.on{transform:none}
+@media(min-width:1000px){
+  .creer-sheet{left:auto;right:26px;bottom:26px;width:400px;border-radius:var(--radius)}
+}
+.creer-sheet .grab{width:42px;height:4px;border-radius:999px;background:var(--line);margin:0 auto 12px}
+.creer-t{
+  font-family:var(--serif);font-size:19px;font-weight:700;
+  color:var(--gold-d);margin:0 4px 12px;
+}
+html[data-theme="dark"] .creer-t{color:var(--gold-l)}
+
+.creer-item{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  padding:14px;margin-bottom:9px;border-radius:var(--radius-sm);
+  border:1px solid var(--line);background:transparent;color:var(--ink);
+  cursor:pointer;transition:.16s;font-family:var(--sans);
+}
+.creer-item:hover,.creer-item:focus-visible{border-color:var(--gold);background:var(--green-soft)}
+.creer-item:active{transform:scale(.995)}
+.creer-item .ic{
+  width:42px;height:42px;flex:0 0 auto;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green-soft);border:1px solid var(--line);
+}
+.creer-item .ic svg{width:20px;height:20px;color:var(--gold-d)}
+html[data-theme="dark"] .creer-item .ic svg{color:var(--gold-l)}
+.creer-item .tx{display:block;min-width:0}
+.creer-item .tx b{display:block;font-size:15px;font-weight:700;line-height:1.25}
+.creer-item .tx span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+
+/* formulaire de la feuille libre */
+.creer-libre{display:none;margin-top:6px;padding-top:14px;border-top:1px solid var(--line)}
+.creer-libre.on{display:block}
+.creer-libre label{
+  display:block;font-size:11px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;margin:10px 0 5px;
+}
+.creer-libre input,.creer-libre select{
+  width:100%;padding:12px 14px;border-radius:var(--radius-xs);
+  border:1px solid var(--inp-bd);background:var(--card-solid);color:var(--ink);
+  font:400 15px var(--sans);outline:none;transition:.18s;
+}
+.creer-libre input:focus,.creer-libre select:focus{
+  border-color:var(--gold);box-shadow:0 0 0 3px rgba(213,181,111,.18);
+}
+.creer-acts{display:flex;gap:9px;margin-top:16px}
+.creer-acts button{
+  flex:1;border:none;border-radius:999px;padding:13px;cursor:pointer;
+  font:700 14px var(--sans);transition:.18s;
+}
+.creer-acts .btn-pri{
+  background:linear-gradient(135deg,var(--green),var(--green-deep));color:var(--cream);
+  box-shadow:0 6px 18px rgba(15,74,60,.28);
+}
+.creer-acts .btn-pri:disabled{opacity:.6}
+.creer-acts .btn-sec{background:transparent;border:1px solid var(--line);color:var(--ink2)}

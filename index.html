@@ -71,7 +71,6 @@
   <button class="plus-item" data-scr="cat" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-book"/></svg></span><b>Catalogue</b></button>
   <button class="plus-item" data-scr="close" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-chart"/></svg></span><b>Closing</b></button>
   <button class="plus-item" data-scr="ana" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-chart"/></svg></span><b>Analytics</b></button>
-  <button class="plus-item" data-scr="docs" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-doc"/></svg></span><b>Nouveau document</b></button>
   <button class="plus-item" data-scr="emarg" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-sign"/></svg></span><b>Émargement</b></button>
 </div>
 
@@ -175,7 +174,7 @@
 <nav class="bottomnav" id="bottomnav">
   <button class="nitem on" data-scr="home"><svg><use href="#ic-home"/></svg><span>Accueil</span></button>
   <button class="nitem" data-scr="docs"><svg><use href="#ic-doc"/></svg><span>Docs</span></button>
-  <div class="fab-wrap"><button class="fab-btn" data-scr="docs" aria-label="Nouveau document"><svg><use href="#ic-plus"/></svg></button></div>
+  <div class="fab-wrap"><button class="fab-btn" id="fabCreer" aria-label="Créer"><svg><use href="#ic-plus"/></svg></button></div>
   <button class="nitem" data-scr="elv"><svg><use href="#ic-users"/></svg><span>Élèves</span></button>
   <button class="nitem" data-scr="acc"><svg><use href="#ic-gear"/></svg><span>Compte</span></button>
 </nav>
@@ -307,6 +306,7 @@
   <div class="acts"><button class="go" onclick="mhPwaInstall()">Installer</button><button class="later" onclick="mhPwaHide()">Plus tard</button></div>
 </div>
 <script src="assets/shell.js"></script>
+<script src="assets/creer.js"></script>
 <script src="assets/nav-history.js"></script>
 </body>
 </html>
