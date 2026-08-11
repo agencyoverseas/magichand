@@ -92,6 +92,11 @@ function pull(){
     .catch(function(e){ setDot('err',e.message||'Erreur lecture'); return null; });
 }
 function push(){
+  /* Le pont mh-bridge.js est devenu la source de vérité : les
+     données partent maintenant dans les tables par module.
+     mh_state n'est plus alimenté pour ne pas avoir deux copies
+     qui divergent. La lecture reste possible en secours. */
+  if(window.MH_BRIDGE_ON) return Promise.resolve();
   if(!configured()||!api().hasCode()||!ready) return Promise.resolve();
   var st=localState(); st.ts=now();
   try{ localStorage.setItem(TS_KEY,String(st.ts)); }catch(e){}
