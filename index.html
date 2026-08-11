@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -12,9 +12,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Magic Hands">
 <script>window.MH_ASSETS={certBg:'assets/cert-bg.png',attBg:'assets/attest-bg.png',sign:'assets/sign.jpg',logoMi:'assets/logo-mi.png',logoFull:'assets/logo-full.png'};</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vollkorn:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/app.css">
 <link rel="stylesheet" href="assets/emargement.css">
 <link rel="stylesheet" href="assets/responsive.css">
+<link rel="stylesheet" href="assets/shell.css">
 </head>
 <body>
 
@@ -35,11 +40,13 @@
 <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></symbol>
 <symbol id="ic-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></symbol>
 <symbol id="ic-sign" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 3.5-10 7-10s3.5 10 7 10c1.6 0 2.6-.8 4-2"/><path d="M3 21h18"/></symbol>
+<symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></symbol>
+<symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
 </defs>
 </svg>
 
 <!-- ===== SIDEBAR (desktop) ===== -->
-<aside class="side" id="side">
+<aside class="side" id="side" hidden>
   <div class="side-brand"><img src="assets/logo-full.png" alt="NexusAI"><div class="bt"><b>Magic Hands</b><span>Studio · NexusAI</span></div></div>
   <div class="side-prof">
     <div class="av">MH</div>
@@ -63,6 +70,8 @@
   <div class="grab"></div>
   <button class="plus-item" data-scr="cat" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-book"/></svg></span><b>Catalogue</b></button>
   <button class="plus-item" data-scr="close" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-chart"/></svg></span><b>Closing</b></button>
+  <button class="plus-item" data-scr="ana" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-chart"/></svg></span><b>Analytics</b></button>
+  <button class="plus-item" data-scr="docs" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-doc"/></svg></span><b>Nouveau document</b></button>
   <button class="plus-item" data-scr="emarg" style="width:100%;text-align:left"><span class="ic"><svg><use href="#ic-sign"/></svg></span><b>Émargement</b></button>
 </div>
 
@@ -70,9 +79,9 @@
 <main class="main" id="main">
 
   <header class="appbar">
-    <button class="abtn" id="btnPlus" aria-label="Plus"><svg><use href="#ic-more"/></svg></button>
+    <button class="abtn" id="btnPlus" aria-label="Menu"><svg><use href="#ic-menu"/></svg></button>
     <div class="brand"><img src="assets/logo-full.png" alt=""><div class="bt"><b>Magic Hands</b><span>Studio</span></div></div>
-    <div class="notifwrap" style="margin-left:auto">
+    <nav class="topnav" id="mhTopnav"><button class="mhpill on" data-scr="home">Tableau de bord</button><button class="mhpill" data-scr="elv">Élèves</button><button class="mhpill" data-scr="emarg">Émargement</button><button class="mhpill" data-scr="close">Closing</button><button class="mhpill" data-scr="cat">Catalogue</button><button class="mhpill" data-scr="ana">Analytics</button><button class="mhpill" data-scr="acc">Réglages</button></nav><span class="mh-offline" id="mhOffline"><i></i>Hors ligne</span><button class="abtn" id="mhTheme" title="Thème" aria-label="Changer de thème"><svg><use href="#ic-moon"/></svg></button><div class="notifwrap" style="margin-left:auto">
       <button class="abtn" id="btnBell" aria-label="Notifications"><svg><use href="#ic-bell"/></svg><span class="dot" id="bellDot" style="display:none"></span></button>
       <div class="notifpanel" id="notifPanel"><h4>Notifications</h4><div id="notifList"></div></div>
     </div>
@@ -149,7 +158,12 @@
     <div class="card-sec"><div data-mount="emargement"></div></div>
   </section>
 
-  <!-- ===== COMPTE ===== -->
+    <!-- ===== ANALYTICS ===== -->
+  <section class="scr" id="scr-ana">
+    <div class="card-sec"><div data-mount="analytics"></div></div>
+  </section>
+
+<!-- ===== COMPTE ===== -->
   <section class="scr" id="scr-acc">
     <div class="card-sec" id="syncBox"></div>
     <div class="card-sec"><div data-mount="settings"></div></div>
@@ -177,7 +191,8 @@
     elv:['Base élèves','Historique des documents générés'],
     close:['Closing','Pipeline commercial'],
     emarg:['Émargement','Feuilles de présence & signatures'],
-    acc:['Compte','Synchronisation & réglages']
+    ana:['Analytics','Business et pédagogique'],
+    acc:['Réglages','Profil, application, sécurité']
   };
   function byId(id){return document.getElementById(id)}
   function closePlus(){var b=byId('plusBg'),s=byId('plusSheet');if(b)b.classList.remove('show');if(s)s.style.display='none'}
@@ -276,11 +291,19 @@
 <script src="assets/dashboard.js"></script>
 <script src="assets/lib/supabase.min.js"></script>
 <script src="config.js"></script>
+<script src="assets/mh-data.js"></script>
 <script src="assets/lib/qrcode.min.js"></script>
 <script src="assets/mh-api.js"></script>
 <script src="assets/sync.js"></script>
+<script src="assets/mh-bridge.js"></script>
 <script src="assets/emargement.js"></script>
 <script src="assets/notif.js"></script>
 <script src="assets/pwa.js"></script>
+<div class="mh-pwa" id="mhPwa">
+  <b>Installer Magic Hands</b>
+  <p>Ajoute l'app à ton écran d'accueil : elle s'ouvre sans navigateur, fonctionne hors ligne et reçoit les notifications.</p>
+  <div class="acts"><button class="go" onclick="mhPwaInstall()">Installer</button><button class="later" onclick="mhPwaHide()">Plus tard</button></div>
+</div>
+<script src="assets/shell.js"></script>
 </body>
 </html>

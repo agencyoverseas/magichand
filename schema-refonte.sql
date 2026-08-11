@@ -1,0 +1,21 @@
+-- ============================================================
+-- Magic Hands — refonte SaaS (août 2026)
+-- Migrations APPLIQUÉES sur le projet nexusai-suite
+-- (vbepjkaynucoohhmnufu). Conservées ici pour pouvoir
+-- recréer le projet à l'identique.
+--
+--   1. mh_backup_avant_refonte   sauvegarde de mh_state
+--   2. mh_tables_par_module      11 tables + RLS + révocation
+--   3. mh_rpc_modules            8 RPC SECURITY DEFINER
+--   4. mh_migration_donnees      reprise des données
+--
+-- Résultat de la reprise :
+--   25 documents  ->  11 fiches élèves (toutes rattachées)
+--    6 prospects,  6 offres,  9 modules,  2 lieux,  1 organisme
+--   21 émargements existants : inchangés
+--
+-- Principe de sécurité : aucune table mh_* n'est lisible avec
+-- la clé anon. Chaque RPC vérifie le code atelier via
+-- mh_check(workspace, code) avant de rendre la main.
+-- ============================================================
+-- Le détail exact des 4 migrations est consultable dans Supabase > Database > Migrations
