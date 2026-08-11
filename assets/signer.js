@@ -82,8 +82,13 @@ function rendre(){
   if(feuille.locked){
     bloc='<div class="sg-card sg-info"><b>Feuille clôturée</b><p>Tu ne peux plus signer. Contacte ta formatrice si besoin.</p></div>';
   } else if(!jours.length){
+    var suiv=(d.lignes||[]).map(function(l){return String(l.date||'');})
+              .filter(function(x){return x>jour();}).sort()[0];
     bloc='<div class="sg-card sg-info"><b>Rien à signer aujourd\'hui</b>'
-        +'<p>On ne peut signer que le jour même de la formation. Reviens sur ce lien le jour J.</p></div>';
+        +'<p>La signature n\'est possible que le jour même de la séance.'
+        +(suiv?' Prochaine journée : <b>'+esc(fmt(suiv))+'</b> — reviens sur ce lien ce jour-là.'
+              :' Toutes les journées de cette formation sont passées.')
+        +'</p></div>';
   } else {
     bloc='<div class="sg-card"><b>Aujourd\'hui — '+esc(fmt(today()))+'</b>'
       + jours.map(function(j){
@@ -137,10 +142,46 @@ function etat(l,slot,label){
   var abs=!!(a&&(a.etat==='absent'||a.etat==='excuse'));
   var cls=abs?'abs':(s?(s.valide?'ok':'sig'):'no');
   var txt=abs?(a.etat==='excuse'?'excusé':'absent'):(s?(s.valide?'validé':'signé'):'—');
-  return '<span class="sg-cell '+cls+'">'+esc(label)+' : '+esc(txt)+'</span>';
+
+  /* Une case ne se signe que le jour même : une journée passée est
+     close, une journée à venir n'a pas eu lieu. Même règle que le
+     serveur, pour ne pas proposer un bouton qui échouerait. */
+  var dj    = jour();
+  var passe = String(l.date||'') < dj;
+  var futur = String(l.date||'') > dj;
+  var fige  = feuille.locked || abs || (s && s.valide) || passe || futur;
+
+  if(fige){
+    var sup = passe ? ' passe' : (futur ? ' futur' : '');
+    var t2  = txt;
+    if(!abs && !s){ t2 = passe ? 'non signé' : (futur ? 'à venir' : txt); }
+    return '<span class="sg-cell '+cls+sup+'" title="'
+         +(passe?'Journée passée — la signature n\'est plus possible':(futur?'Journée à venir':''))
+         +'">'+esc(label)+' : '+esc(t2)+'</span>';
+  }
+  return '<button class="sg-cell sg-act '+cls+'" data-sign="'+l.id+'|'+slot+'">'
+       + '<span class="lb">'+esc(label)+'</span>'
+       + '<span class="vl">'+(s?'signé · refaire':'Signer')+'</span>'
+       + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+       + '<path d="M3 17c3.5 0 3.5-10 7-10s3.5 10 7 10c1.6 0 2.6-.8 4-2"/><path d="M3 21h18"/></svg>'
+       + '</button>';
 }
 
 /* ---------- pad de signature ---------- */
+var ERREURS={
+  jour_futur:"Cette journée n'a pas encore eu lieu.",
+  jour_passe:"Cette journée est passée, la signature n'est plus possible.",
+  feuille_cloturee:"La feuille a été clôturée par la formatrice.",
+  case_absente:"Tu es noté absent sur ce créneau.",
+  deja_valide:"Cette signature a déjà été validée.",
+  lien_invalide:"Ce lien n'est plus valable.",
+  signature_invalide:"Signature trop courte, recommence."
+};
+function messageErreur(e){
+  var m=(e&&e.message)||'';
+  for(var k in ERREURS){ if(m.indexOf(k)>=0) return ERREURS[k]; }
+  return m||'Enregistrement impossible';
+}
 function ouvrirPad(lid,slot){
   var m=document.createElement('div'); m.className='confirm-bg show sg-pad';
   m.innerHTML='<div class="confirm-box">'
@@ -151,16 +192,24 @@ function ouvrirPad(lid,slot){
     +'<button class="btn gold" id="sgNo">Annuler</button>'
     +'<button class="btn cta" id="sgGo">Valider</button></div></div>';
   document.body.appendChild(m);
+  /* la page ne doit pas défiler derrière le pad pendant qu'on dessine */
+  var scrollY=window.scrollY;
+  document.body.style.overflow='hidden';
+  function fermerPad(){
+    document.body.style.overflow='';
+    m.remove();
+    window.scrollTo(0,scrollY);
+  }
 
   var pad=makePad(m.querySelector('#sgC'));
   m.querySelector('#sgClr').onclick=function(){ pad.clear(); };
-  m.querySelector('#sgNo').onclick=function(){ m.remove(); };
+  m.querySelector('#sgNo').onclick=fermerPad;
   m.querySelector('#sgGo').onclick=function(){
     if(pad.vide()){ toast('La signature est vide'); return; }
     if(!m.querySelector('#sgOk').checked){ toast('Coche la case de certification'); return; }
     var b=m.querySelector('#sgGo'); b.disabled=true; b.textContent='Envoi…';
     MHapi.eleve.sign(token,feuille.id,lid,slot,pad.png(),pad.pts()).then(function(){
-      m.remove(); toast('Présence enregistrée ✓');
+      fermerPad(); toast('Présence enregistrée ✓');
       return MHapi.eleve.get(token).then(function(r){
         var id=feuille.id;
         feuilles=(r&&r.feuilles)||[]; jourServeur=(r&&r.jour)||jourServeur;
@@ -168,7 +217,7 @@ function ouvrirPad(lid,slot){
         rendre();
       });
     }).catch(function(e){
-      b.disabled=false; b.textContent='Valider'; toast(e.message||'Échec de l\'envoi');
+      b.disabled=false; b.textContent='Valider'; toast(messageErreur(e));
     });
   };
 }

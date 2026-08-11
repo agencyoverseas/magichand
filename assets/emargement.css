@@ -268,3 +268,79 @@
 /* la feuille ne déborde jamais : elle est mise à l'échelle, pas tronquée */
 .em-sheet-wrap{overflow:hidden}
 .em-scroll{overflow-x:hidden}
+
+/* ============================================================
+   PAGE ÉLÈVE — cases signables directement dans le récapitulatif
+   La signature était bloquée hors du jour même : une session
+   passée ne pouvait plus jamais être émargée. Chaque créneau
+   déjà écoulé porte désormais son propre bouton.
+   ============================================================ */
+.sg-cell.sg-act{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid #C9A85F;background:#fff;color:#0F4A3C;
+  border-radius:999px;padding:9px 14px;cursor:pointer;
+  font:600 13px 'Open Sans',sans-serif;transition:.16s;
+  box-shadow:0 2px 8px rgba(15,74,60,.08);
+}
+.sg-cell.sg-act .lb{color:#5B6E67;font-weight:600}
+.sg-cell.sg-act .vl{font-weight:700}
+.sg-cell.sg-act svg{color:#B79750;flex:0 0 auto}
+.sg-cell.sg-act:hover{background:#FFFBF2;border-color:#B79750;transform:translateY(-1px)}
+.sg-cell.sg-act:active{transform:translateY(0) scale(.985)}
+.sg-cell.sg-act.sig{border-color:#3E8E5A;background:rgba(62,142,90,.07)}
+.sg-cell.sg-act.sig .vl{color:#2F6E45}
+.sg-cell.sg-act.sig svg{color:#3E8E5A}
+.sg-cell.futur{opacity:.5}
+
+/* les créneaux tiennent sur une ligne et restent tapables au pouce */
+.sg-cells{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.sg-row{display:block;padding:12px 0;border-bottom:1px solid rgba(15,74,60,.10)}
+.sg-row:last-child{border-bottom:none}
+.sg-row > b{display:block;font-size:14px;margin-bottom:2px}
+.sg-cell.passe{opacity:.55;text-decoration:line-through;text-decoration-thickness:1px}
+
+/* ============================================================
+   PAD DE SIGNATURE — recentrage
+   Le contenu dépassait la hauteur de l'écran. Avec un centrage
+   flex, le débordement se répartit en haut ET en bas : le haut
+   du cadre sortait de l'écran et devenait inatteignable.
+   La boîte défile désormais d'elle-même et reste entière.
+   ============================================================ */
+.sg-pad{
+  align-items:center;justify-content:center;
+  padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.sg-pad .confirm-box{
+  max-width:640px;width:calc(100% - 8px);
+  margin:auto;                        /* recentre même en cas de débordement */
+  max-height:calc(100dvh - 32px);
+  display:flex;flex-direction:column;gap:12px;
+  overflow-y:auto;
+}
+.sg-pad .confirm-box > p{margin:0;font-weight:700;font-size:15px}
+
+/* le cadre de dessin s'adapte à la hauteur disponible */
+.sg-pad .sig-canvas{
+  width:100%;height:min(34dvh,230px);
+  aspect-ratio:auto;                  /* neutralise le 3/1 hérité */
+  display:block;border-radius:12px;
+  border:2px dashed rgba(15,74,60,.30);background:#fff;
+  touch-action:none;                  /* dessiner ne fait plus défiler la page */
+}
+.sg-pad .em-cb{
+  display:flex;align-items:center;gap:10px;
+  font-size:14px;line-height:1.35;cursor:pointer;
+}
+.sg-pad .em-cb input{width:20px;height:20px;flex:0 0 auto;accent-color:#0F4A3C}
+
+/* boutons : deux au-dessus, Valider en pleine largeur en dessous */
+.sg-pad .acts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.sg-pad .acts .btn{width:100%;padding:14px 10px;font-size:14.5px}
+.sg-pad .acts .btn.cta{grid-column:1 / -1}
+
+/* écran bas ou clavier ouvert : on gagne de la place */
+@media (max-height:640px){
+  .sg-pad .sig-canvas{height:26dvh}
+  .sg-pad .confirm-box{gap:9px}
+}
