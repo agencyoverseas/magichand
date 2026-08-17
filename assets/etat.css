@@ -86,26 +86,39 @@ body:has(.mh-bandeau-etat.show){ padding-top:40px }
 
 .note.err{ color:var(--late) }
 
-/* ---------- sidebar au survol (PC) ---------- */
+/* ---------- barre latérale au survol (PC) ----------
+   La barre s'appelle .side dans app.css (pas .sidebar) et elle
+   s'élargit déjà au survol : 78 px repliée, 242 px ouverte.
+   Ici on la fait sortir complètement de l'écran, et on lui donne
+   une poignée invisible de 16 px collée à son bord droit. Comme
+   cette poignée fait partie de .side, l'approche de la souris
+   suffit à la faire revenir — aucun élément à ajouter au HTML.
+   ------------------------------------------------------------ */
 @media (min-width:1000px){
-  .mh-bord-sidebar{
-    position:fixed; left:0; top:0; bottom:0; width:14px; z-index:150;
-  }
-  .sidebar{
+  .side{
     transform:translateX(-100%);
-    transition:transform .22s ease;
-    will-change:transform;
+    transition:transform .22s cubic-bezier(.3,.9,.3,1),
+               width .22s cubic-bezier(.3,.9,.3,1);
+    overflow:visible;
   }
-  .sidebar:hover,
-  .sidebar:focus-within,
-  .mh-bord-sidebar:hover + .sidebar,
-  body.mh-sidebar-ouverte .sidebar{
+  /* la poignée : invisible, juste à droite de la barre repliée */
+  .side::after{
+    content:'';
+    position:absolute; top:0; left:100%;
+    width:16px; height:100%;
+  }
+  .side:hover,
+  .side:focus-within,
+  body.mh-side-ouverte .side{
     transform:translateX(0);
   }
+  /* la barre étant hors écran, le contenu reprend toute la largeur */
+  .main{ margin-left:0 }
 }
-/* écrans tactiles : le survol n'existe pas, la bande sert de poignée */
-@media (hover:none){
-  .mh-bord-sidebar{ display:none }
-  .sidebar{ transform:translateX(-100%) }
-  body.mh-sidebar-ouverte .sidebar{ transform:translateX(0) }
+
+/* écrans tactiles : pas de survol possible, la barre reste masquée
+   et c'est le bouton du haut qui l'ouvre (classe posée par shell.js) */
+@media (hover:none) and (min-width:1000px){
+  .side::after{ display:none }
+  body.mh-side-ouverte .side{ transform:translateX(0) }
 }

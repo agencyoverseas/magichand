@@ -182,14 +182,19 @@
      associée, même sans accès à internet. On demande donc au
      serveur lui-même.
      ============================================================ */
+  /* Le test réseau doit rester une requête « simple » au sens CORS :
+     dès qu'on ajoute un en-tête maison comme apikey, le navigateur
+     envoie d'abord un OPTIONS de contrôle, et si celui-ci échoue on
+     conclut à tort que le serveur est injoignable — l'app se croit
+     hors ligne alors qu'elle ne l'est pas. Un GET sans en-tête
+     répond 401, ce qui prouve déjà que le serveur est là. */
   function ping() {
-    if (!CFG.url || !CFG.anonKey || !w.fetch) return Promise.resolve(navigator.onLine);
+    if (!CFG.url || !w.fetch) return Promise.resolve(navigator.onLine);
     if (!navigator.onLine) return Promise.resolve(false);   // inutile d'essayer
     var ctrl = w.AbortController ? new AbortController() : null;
     var minuteur = setTimeout(function () { if (ctrl) ctrl.abort(); }, PING_TIMEOUT);
     return w.fetch(CFG.url + '/rest/v1/', {
-      method: 'HEAD',
-      headers: { apikey: CFG.anonKey },
+      method: 'GET',
       cache: 'no-store',
       signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
@@ -197,7 +202,11 @@
       return r.status > 0;      // toute réponse HTTP prouve que le serveur répond
     }).catch(function () {
       clearTimeout(minuteur);
-      return false;
+      /* Dernier recours : si le navigateur se dit connecté, on lui
+         laisse le bénéfice du doute plutôt que de bloquer l'app.
+         Une écriture qui échoue partira de toute façon dans la
+         file d'attente, rien n'est perdu. */
+      return navigator.onLine;
     });
   }
 

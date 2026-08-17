@@ -286,9 +286,33 @@
      Démarrage
      ============================================================ */
 
+
+  /* ============================================================
+     Barre latérale : ouverture au doigt
+     Sur ordinateur elle revient au survol (etat.css). Sur écran
+     tactile le survol n'existe pas : le bouton « Menu » de la
+     barre du haut sert de poignée.
+     ============================================================ */
+  function branche_side() {
+    var b = byId('btnPlus');
+    if (!b || b.dataset.mhSide) return;
+    b.dataset.mhSide = '1';
+    b.addEventListener('click', function () {
+      if (w.matchMedia && w.matchMedia('(hover:none)').matches) {
+        d.body.classList.toggle('mh-side-ouverte');
+      }
+    });
+    d.addEventListener('click', function (e) {
+      if (!d.body.classList.contains('mh-side-ouverte')) return;
+      if (e.target.closest && (e.target.closest('.side') || e.target.closest('#btnPlus'))) return;
+      d.body.classList.remove('mh-side-ouverte');
+    });
+  }
+
   function boot() {
     peintEtat(null);
     majBoite();
+    branche_side();
     if (M()) M().ping();
   }
 
