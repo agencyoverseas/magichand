@@ -188,6 +188,26 @@
     carte.addEventListener('click', function () { if (w.showScr) w.showScr('biblio'); });
   }
 
+
+  /* ============================================================
+     Compteurs du tableau de bord
+     « Documents générés » ne doit compter que les PDF réellement
+     produits. Les inscriptions et les élèves sans document
+     circulent dans la même liste côté app.js (sinon ils
+     disparaîtraient de la base élèves) mais n'en sont pas.
+     ============================================================ */
+  function majCompteurs() {
+    var api = M(); if (!api) return;
+    var data = api.data || {};
+    var pdf = (data.documents || []).filter(function (x) {
+      return x.type === 'cert' || x.type === 'att' || x.type === 'attest';
+    }).length;
+    var e = byId('kpiDocs');
+    if (e) e.textContent = pdf;
+    var el = byId('kpiElv');
+    if (el) el.textContent = (data.eleves || []).length;
+  }
+
   /* ============================================================
      2. ENVOI GROUPÉ
      ============================================================ */
@@ -352,6 +372,70 @@
     }
   }
 
+
+  /* ============================================================
+     Suppression d'un élève — chemin direct
+     Le bouton d'origine passe par localStorage, et l'élève
+     réapparaissait dès que le pont relisait le serveur. On parle
+     donc directement à la base, puis on referme la fiche.
+     ============================================================ */
+  function trouveEleve(prenom, nom) {
+    var api = M(); if (!api) return null;
+    var cle = normName(prenom, nom);
+    return (api.data.eleves || []).find(function (e) {
+      return normName(e.prenom, e.nom) === cle;
+    }) || null;
+  }
+
+  function brancheSuppression() {
+    var b = byId('ficheDelAll');
+    if (!b || b.dataset.mhDel) return;
+    b.dataset.mhDel = '1';
+
+    b.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+
+      var panneau = b.closest('.fiche-panel') || d;
+      var titre = panneau.querySelector('.fiche-nom, h3, h2');
+      var nomComplet = (titre && titre.textContent || '').trim();
+      var mots = nomComplet.split(/\s+/);
+      var nom = mots.length > 1 ? mots.pop() : nomComplet;
+      var prenom = mots.join(' ');
+
+      var eleve = trouveEleve(prenom, nom);
+      if (!eleve) { toast('Élève introuvable en base'); return; }
+
+      confirme('Mettre ' + nomComplet + ' à la corbeille, avec ses documents ?', function () {
+        var api = M();
+        api.trash('eleve', eleve.id, 'Suppression ' + nomComplet)
+          .then(function () { return api.pull(); })
+          .then(function () {
+            var bg = byId('ficheBg'); if (bg) bg.remove();
+            if (w.MHrefresh) w.MHrefresh();
+            if (w.MHBridge) w.MHBridge.hydrate();
+            rendBiblio(); majCompteurs();
+            toast('Élève mis à la corbeille');
+          });
+      });
+    }, true);
+  }
+
+  function confirme(question, suite) {
+    var bg = d.createElement('div');
+    bg.className = 'canal-bg';
+    bg.innerHTML = '<div class="canal-panel"><b>' + esc(question) + '</b>'
+      + '<button class="btn cta" data-ok="1">Confirmer</button>'
+      + '<button class="btn gh" data-ok="0">Annuler</button></div>';
+    d.body.appendChild(bg);
+    bg.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-ok]');
+      if (!t && e.target !== bg) return;
+      bg.remove();
+      if (t && t.getAttribute('data-ok') === '1') suite();
+    });
+  }
+
   /* ============================================================
      3. CRÉATION D'ÉLÈVE — part en base tout de suite
      ============================================================ */
@@ -429,12 +513,13 @@
     blocDocsCliquable();
     boutonCreerEleve();
     rendBiblio();
+    majCompteurs();
   }
 
   /* La fiche élève est construite à la volée par app.js : on
      surveille son apparition pour y greffer le bouton d'envoi. */
   var observateur = new MutationObserver(function () {
-    if (byId('ficheEmarg')) boutonEnvoi();
+    if (byId('ficheEmarg')) { boutonEnvoi(); brancheSuppression(); }
     if (!byId('ficheBg')) selection = {};
     blocDocsCliquable();
     boutonCreerEleve();
@@ -443,8 +528,10 @@
   function boot() {
     accroche();
     if (d.body) observateur.observe(d.body, { childList: true, subtree: true });
-    if (M()) M().onChange(function () { rendBiblio(); });
-    w.addEventListener('mh:distant', function () { rendBiblio(); });
+    if (M()) M().onChange(function () { rendBiblio(); majCompteurs(); });
+    w.addEventListener('mh:distant', function () { rendBiblio(); majCompteurs(); });
+    // le tableau de bord se redessine tout seul : on repasse derrière
+    setInterval(majCompteurs, 3000);
   }
 
   w.MHui = { biblio: rendBiblio, nouvelEleve: formulaireEleve, message: messageDefaut };

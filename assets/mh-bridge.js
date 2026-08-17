@@ -43,32 +43,55 @@
      ============================================================ */
 
   /** Les documents émis, au format « clients » attendu par app.js.
-      Le téléphone et l'email viennent de la fiche élève : côté app
-      ils sont portés par chaque document. */
+      app.js construit sa liste d'élèves à partir de cette liste : un
+      élève sans document n'existerait donc pas pour lui. Les
+      inscriptions y sont ajoutées avec le type « fiche », comme
+      avant leur passage dans leur propre table, pour que chaque
+      élève reste visible. Le compteur « Documents générés » ne
+      compte, lui, que les vrais PDF (voir mh-ui.js). */
   function toClients(data) {
     var byId = {};
     (data.eleves || []).forEach(function (e) { byId[e.id] = e; });
-    return (data.documents || []).map(function (doc) {
-      var e = byId[doc.eleve_id] || {};
+
+    function ligne(src, e, type, id) {
       return {
-        id: doc.id,
-        eid: doc.eleve_id || '',
+        id: id,
+        eid: src.eleve_id || '',
         prenom: e.prenom || '',
         nom: e.nom || '',
         tel: e.tel || '',
         email: e.email || '',
-        adresse: doc.adresse || e.adresse || '',
-        formation: doc.formation || e.formation || '',
-        ds: iso(doc.date_debut),
-        de: iso(doc.date_fin),
-        duree: doc.duree || '',
-        lieu: doc.lieu || '',
-        em: iso(doc.date_emise),
-        type: doc.type || 'cert',
-        pdf: doc.pdf_path || '',
-        ts: doc.created_at ? Date.parse(doc.created_at) : Date.now()
+        adresse: src.adresse || e.adresse || '',
+        formation: src.formation || e.formation || '',
+        ds: iso(src.date_debut),
+        de: iso(src.date_fin),
+        duree: src.duree || '',
+        lieu: src.lieu || '',
+        em: iso(src.date_emise || src.date_fin),
+        type: type,
+        pdf: src.pdf_path || '',
+        ts: src.created_at ? Date.parse(src.created_at) : Date.now()
       };
-    }).sort(function (a, b) { return b.ts - a.ts; });
+    }
+
+    var out = (data.documents || []).map(function (doc) {
+      return ligne(doc, byId[doc.eleve_id] || {}, doc.type || 'cert', doc.id);
+    });
+
+    (data.inscriptions || []).forEach(function (ins) {
+      out.push(ligne(ins, byId[ins.eleve_id] || {}, 'fiche', 'insc_' + ins.id));
+    });
+
+    // un élève sans document ni inscription doit rester visible
+    var vus = {};
+    out.forEach(function (c) { if (c.eid) vus[c.eid] = 1; });
+    (data.eleves || []).forEach(function (e) {
+      if (vus[e.id]) return;
+      out.push(ligne({ eleve_id: e.id, formation: e.formation, created_at: e.created_at },
+        e, 'fiche', 'elv_' + e.id));
+    });
+
+    return out.sort(function (a, b) { return b.ts - a.ts; });
   }
 
   function toContacts(data) {
@@ -155,6 +178,12 @@
 
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+  /** Ligne fabriquée par le pont (inscription ou élève sans
+      document), pas un vrai document de la base. */
+  function derivee(c) {
+    return /^(insc_|elv_)/.test(String((c && c.id) || ''));
+  }
+
   /** Champs qui appartiennent au document. */
   function empreinteDoc(c) {
     return [c.type || 'cert', c.formation || '', c.ds || '', c.de || '',
@@ -216,7 +245,7 @@
   function majClient(avant, apres) {
     var M = w.MHData, jobs = [];
 
-    if (empreinteDoc(avant) !== empreinteDoc(apres) && UUID.test(apres.id || '')) {
+    if (!derivee(apres) && empreinteDoc(avant) !== empreinteDoc(apres) && UUID.test(apres.id || '')) {
       jobs.push(M.saveDoc(ligneDoc(apres, true)));
     }
 
@@ -349,12 +378,14 @@
       // créations et modifications
       val.forEach(function (c) {
         var a = avantParId[c.id];
-        if (!a) { pushClient(c); return; }
+        if (!a) { if (!derivee(c)) pushClient(c); return; }
         if (JSON.stringify(a) !== JSON.stringify(c)) majClient(a, c);
       });
 
-      // suppressions
-      var partis = prev.filter(function (c) { return !apresParId[c.id]; });
+      // suppressions — une ligne dérivée d'une inscription ou d'un
+      // élève sans document n'est pas un document : on ne l'envoie
+      // pas à la corbeille des documents
+      var partis = prev.filter(function (c) { return !apresParId[c.id] && !derivee(c); });
       if (partis.length) supprimeClients(partis, val);
       return;
     }
