@@ -382,9 +382,50 @@
   function trouveEleve(prenom, nom) {
     var api = M(); if (!api) return null;
     var cle = normName(prenom, nom);
+    if (!cle) return null;
     return (api.data.eleves || []).find(function (e) {
       return normName(e.prenom, e.nom) === cle;
     }) || null;
+  }
+
+  /** Identifie ce que la fiche ouverte représente réellement.
+      On part des documents affichés plutôt que du titre : une
+      fiche sans nom (document orphelin, reste d'un essai) n'a
+      aucun élève à retrouver, et il faut quand même pouvoir la
+      faire disparaître. */
+  function cibleFiche() {
+    var api = M(); if (!api) return { type: 'rien' };
+    var data = api.data || {};
+    var panneau = d.querySelector('.fiche-panel') || d;
+
+    // 1. par les documents affichés : le plus fiable
+    var ids = [];
+    panneau.querySelectorAll('[data-opendoc]').forEach(function (l) {
+      ids.push(l.getAttribute('data-opendoc'));
+    });
+    for (var i = 0; i < ids.length; i++) {
+      var doc = (data.documents || []).find(function (x) { return x.id === ids[i]; });
+      if (!doc) continue;
+      if (doc.eleve_id) {
+        var e = (data.eleves || []).find(function (x) { return x.id === doc.eleve_id; });
+        if (e) return { type: 'eleve', id: e.id, nom: ((e.prenom || '') + ' ' + (e.nom || '')).trim() };
+      }
+      // document sans élève rattaché : c'est lui qu'il faut supprimer
+      return { type: 'orphelins', ids: ids.filter(function (x) { return !!x; }) };
+    }
+
+    // 2. par le titre de la fiche
+    var titre = panneau.querySelector('.fiche-nom, h3, h2');
+    var nomComplet = ((titre && titre.textContent) || '').trim();
+    if (nomComplet) {
+      var mots = nomComplet.split(/\s+/);
+      var nom = mots.length > 1 ? mots.pop() : nomComplet;
+      var el = trouveEleve(mots.join(' '), nom);
+      if (el) return { type: 'eleve', id: el.id, nom: nomComplet };
+    }
+
+    // 3. plus rien à quoi se raccrocher : nettoyage local
+    return { type: 'locale', ids: ids.filter(function (x) { return !!x; }) };
   }
 
   function brancheSuppression() {
@@ -396,27 +437,44 @@
       ev.stopPropagation();
       ev.preventDefault();
 
-      var panneau = b.closest('.fiche-panel') || d;
-      var titre = panneau.querySelector('.fiche-nom, h3, h2');
-      var nomComplet = (titre && titre.textContent || '').trim();
-      var mots = nomComplet.split(/\s+/);
-      var nom = mots.length > 1 ? mots.pop() : nomComplet;
-      var prenom = mots.join(' ');
+      var api = M(); if (!api) { toast('Données indisponibles'); return; }
+      var cible = cibleFiche();
 
-      var eleve = trouveEleve(prenom, nom);
-      if (!eleve) { toast('Élève introuvable en base'); return; }
+      function termine(message) {
+        var bg = byId('ficheBg'); if (bg) bg.remove();
+        if (w.MHBridge) w.MHBridge.hydrate();
+        if (w.MHrefresh) w.MHrefresh();
+        rendBiblio(); majCompteurs();
+        toast(message);
+      }
 
-      confirme('Mettre ' + nomComplet + ' à la corbeille, avec ses documents ?', function () {
-        var api = M();
-        api.trash('eleve', eleve.id, 'Suppression ' + nomComplet)
-          .then(function () { return api.pull(); })
-          .then(function () {
-            var bg = byId('ficheBg'); if (bg) bg.remove();
-            if (w.MHrefresh) w.MHrefresh();
-            if (w.MHBridge) w.MHBridge.hydrate();
-            rendBiblio(); majCompteurs();
-            toast('Élève mis à la corbeille');
-          });
+      if (cible.type === 'eleve') {
+        confirme('Mettre ' + (cible.nom || 'cet élève') + ' à la corbeille, avec ses documents ?', function () {
+          api.trash('eleve', cible.id, 'Suppression ' + cible.nom)
+            .then(function () { return api.pull(); })
+            .then(function () { termine('Élève mis à la corbeille'); });
+        });
+        return;
+      }
+
+      if (cible.type === 'orphelins' && cible.ids.length) {
+        confirme('Cette fiche n\'est rattachée à aucun élève. Supprimer ses '
+          + cible.ids.length + ' document(s) ?', function () {
+          Promise.all(cible.ids.map(function (id) { return api.trash('document', id, 'Document orphelin'); }))
+            .then(function () { return api.pull(); })
+            .then(function () { termine('Fiche supprimée'); });
+        });
+        return;
+      }
+
+      // rien en base : la fiche ne vit que dans cet appareil
+      confirme('Cette fiche n\'existe pas en base. La retirer de cet appareil ?', function () {
+        try {
+          var cli = JSON.parse(localStorage.getItem('mh_clients_v3')) || [];
+          var restants = cli.filter(function (c) { return cible.ids.indexOf(c.id) < 0; });
+          localStorage.setItem('mh_clients_v3', JSON.stringify(restants));
+        } catch (e) { }
+        termine('Fiche retirée de cet appareil');
       });
     }, true);
   }

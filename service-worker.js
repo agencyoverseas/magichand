@@ -5,7 +5,7 @@
    fallback sur le cache si hors-ligne). Ne touche jamais aux
    requêtes Supabase (cross-origin, jamais interceptées).
    ============================================================ */
-var CACHE_VERSION = 'mh-shell-20260817-eleves';
+var CACHE_VERSION = 'mh-shell-20260817-suppression';
 var PRECACHE = [
   './',
   './index.html',
