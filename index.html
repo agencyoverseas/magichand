@@ -187,6 +187,7 @@
   var TITLES={
     home:['Tableau de bord','Vue d’ensemble · Magic Hands'],
     docs:['Studio de documents','Certificat & attestation officiels'],
+    biblio:['Documents','Tous les documents générés'],
     cat:['Catalogue','Modules, offres & sessions'],
     elv:['Base élèves','Historique des documents générés'],
     close:['Closing','Pipeline commercial'],
@@ -204,6 +205,7 @@
     for(var j=0;j<ss.length;j++)ss[j].classList.toggle('on',ss[j].id==='scr-'+name);
     var t=TITLES[name]; if(t){var a=byId('mhTitle'),b=byId('mhSub'); if(a)a.textContent=t[0]; if(b)b.textContent=t[1];}
     closePlus();closeNotif();
+    if(name==='biblio'&&window.MHui&&window.MHui.biblio)window.MHui.biblio();
     if(name==='docs')requestAnimationFrame(mhDocsFit);
     if(name==='home'&&window.MHdash&&window.MHdash.render)window.MHdash.render();
     if(name==='emarg'&&window.MHemarg&&window.MHemarg.refresh)window.MHemarg.refresh();
@@ -309,6 +311,7 @@
 <script src="assets/shell.js"></script>
 <script src="assets/creer.js"></script>
 <script src="assets/maj.js"></script>
+<script src="assets/mh-ui.js"></script>
 <script src="assets/nav-history.js"></script>
 </body>
 </html>

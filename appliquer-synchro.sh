@@ -39,14 +39,24 @@ warn() { printf '%s!%s %s\n' "$JAUNE" "$RAZ" "$*"; }
 err()  { printf '%s✗%s %s\n' "$ROUGE" "$RAZ" "$*" >&2; }
 info() { printf '%s  %s%s\n' "$GRIS" "$*" "$RAZ"; }
 
-FICHIERS_ASSETS="mh-data.js mh-bridge.js mh-etat.js etat.css pwa.js"
-FICHIERS_RACINE="index.html service-worker.js"
+FICHIERS_ASSETS="mh-data.js mh-bridge.js mh-etat.js mh-ui.js etat.css pwa.js"
+FICHIERS_RACINE="index.html service-worker.js version.json"
 
 # ------------------------------------------------------------
 # 1. Vérifications
 # ------------------------------------------------------------
-[ -f "$SOURCE/index.html" ] || { err "Lance le script depuis le dossier de la livraison."; exit 1; }
-[ -d "$DEPOT/.git" ]        || { err "Pas de dépôt git dans $DEPOT"; exit 1; }
+[ -f "$SOURCE/index.html" ] || { err "Lance le script depuis le dossier qui contient index.html."; exit 1; }
+
+# Le zip complet peut avoir ete decompresse DIRECTEMENT dans le depot.
+# Dans ce cas il n y a rien a copier : les fichiers sont deja en place,
+# et se copier sur soi-meme ferait echouer le script.
+SUR_PLACE=0
+CIBLE="$(cd "$DEPOT" 2>/dev/null && pwd || echo _)"
+if [ "$SOURCE" = "$CIBLE" ]; then SUR_PLACE=1; fi
+if [ "$SUR_PLACE" = "0" ] && [ -d "$SOURCE/.git" ] && [ ! -d "$DEPOT/.git" ]; then
+  DEPOT="$SOURCE"; SUR_PLACE=1
+fi
+[ -d "$DEPOT/.git" ] || { err "Pas de depot git dans $DEPOT"; exit 1; }
 
 for f in $FICHIERS_ASSETS; do
   [ -f "$SOURCE/assets/$f" ] || { err "Fichier manquant dans la livraison : assets/$f"; exit 1; }
@@ -58,6 +68,9 @@ ok "Livraison complète, dépôt trouvé dans $DEPOT"
 #    On ne remplace jamais sans garder une copie : si un bug
 #    apparaît, tu reviens en arrière en une commande.
 # ------------------------------------------------------------
+if [ "$SUR_PLACE" = "1" ]; then
+  info "Fichiers deja dans le depot : aucune copie necessaire"
+else
 SAUV="$DEPOT/.sauvegarde-$DATE"
 mkdir -p "$SAUV/assets"
 for f in $FICHIERS_ASSETS sync.js; do
@@ -79,6 +92,7 @@ for f in $FICHIERS_RACINE; do
   cp "$SOURCE/$f" "$DEPOT/$f" && info "$f"
 done
 ok "Fichiers copiés"
+fi
 
 # ------------------------------------------------------------
 # 4. Retrait de l'ancienne synchronisation

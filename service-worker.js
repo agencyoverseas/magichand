@@ -5,7 +5,7 @@
    fallback sur le cache si hors-ligne). Ne touche jamais aux
    requêtes Supabase (cross-origin, jamais interceptées).
    ============================================================ */
-var CACHE_VERSION = 'mh-shell-20260817-synchro';
+var CACHE_VERSION = 'mh-shell-20260817-temps-reel';
 var PRECACHE = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ var PRECACHE = [
   './assets/dashboard.js',
   './assets/mh-api.js',
   './assets/mh-etat.js',
+  './assets/mh-ui.js',
   './assets/mh-data.js',
   './assets/mh-bridge.js',
   './assets/shell.js',

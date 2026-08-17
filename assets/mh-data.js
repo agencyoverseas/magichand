@@ -60,7 +60,7 @@
   function vide() {
     return {
       eleves: [], documents: [], offers: [], modules: [], sessions: [],
-      org: [], lieux: [], prospects: [], calls: [], echeances: [], settings: {}
+      org: [], lieux: [], prospects: [], calls: [], echeances: [], inscriptions: [], settings: {}
     };
   }
 
@@ -70,12 +70,14 @@
   var listeners = [];
   var flushEnCours = false;
   var timerRejeu = null;
+  var tempsReel = false;
+  var envoiRecent = {};   // marque nos propres ecritures, pour ignorer leur echo
 
   function emit() {
     listeners.forEach(function (f) { try { f(DATA, online); } catch (e) { } });
     try {
       w.dispatchEvent(new CustomEvent('mh:etat', {
-        detail: { online: online, attente: enAttente(), bloquees: bloquees() }
+        detail: { online: online, tempsReel: tempsReel, attente: enAttente(), bloquees: bloquees() }
       }));
     } catch (e) { }
   }
@@ -220,6 +222,56 @@
     });
   }
 
+  /* ============================================================
+     Temps réel — signal seul
+     On écoute la table mh_pulse, qui ne contient que le nom de la
+     table touchée et l'heure : aucune donnée d'élève ne transite
+     par ce canal. Le signal reçu déclenche un rechargement par
+     mh_data_get, protégée par le code atelier.
+     ============================================================ */
+  var canal = null, dernierPulse = {}, tempoPull = null;
+
+  function ecoute() {
+    var c = client();
+    if (!c || canal || !code()) return;
+    try {
+      canal = c.channel('mh-pulse-' + WS)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'mh_pulse', filter: 'workspace=eq.' + WS },
+          function (msg) {
+            var l = (msg && (msg.new || msg.record)) || {};
+            if (!l.source) return;
+            // on ignore l'écho de nos propres écritures
+            if (dernierPulse[l.source] === l.rev) return;
+            dernierPulse[l.source] = l.rev;
+            if (Date.now() - (envoiRecent[l.source] || 0) < 2500) return;
+            planifiePull(l.source);
+          })
+        .subscribe(function (etat) {
+          tempsReel = (etat === 'SUBSCRIBED');
+          emit();
+        });
+    } catch (e) { console.warn('[mh-data] temps réel indisponible', e); }
+  }
+
+  /** Plusieurs signaux d'affilée ne déclenchent qu'un rechargement. */
+  function planifiePull(source) {
+    clearTimeout(tempoPull);
+    tempoPull = setTimeout(function () {
+      pull().then(function () {
+        try {
+          w.dispatchEvent(new CustomEvent('mh:distant', { detail: { source: source } }));
+        } catch (e) { }
+      });
+    }, 350);
+  }
+
+  function coupeEcoute() {
+    if (!canal) return;
+    try { canal.unsubscribe(); } catch (e) { }
+    canal = null; tempsReel = false;
+  }
+
   /* ---------- lecture ---------- */
   function pull() {
     var c = client();
@@ -242,6 +294,7 @@
     }
     var c = client();
     if (!c || !online) { queue(fn, args, libelle); return Promise.resolve(null); }
+    marqueEnvoi(fn);
     return c.rpc(fn, args).then(function (r) {
       if (r.error) throw r.error;
       return pull().then(function () { return r.data; });
@@ -253,11 +306,21 @@
     });
   }
 
+  /** Retient qu'on vient d'écrire : l'écho de notre propre
+      modification ne doit pas déclencher un rechargement. */
+  function marqueEnvoi(fn) {
+    var t = { mh_eleve_save: 'mh_eleves', mh_doc_save: 'mh_documents',
+              mh_inscription_save: 'mh_inscriptions', mh_em_save: 'mh_emargements',
+              mh_trash: 'mh_documents', mh_restore: 'mh_documents' }[fn];
+    if (t) envoiRecent[t] = Date.now();
+  }
+
   /* ---------- API ---------- */
   var API = {
     ws: WS,
     get data() { return DATA; },
     get online() { return online; },
+    get tempsReel() { return tempsReel; },
     code: code, setCode: setCode,
     onChange: onChange,
     pull: pull,
@@ -300,6 +363,7 @@
         setCode(c);
         DATA = r.data; writeJSON(LS_CACHE, DATA); emit();
         try { document.dispatchEvent(new CustomEvent('mh:code')); } catch (e) { }
+        ecoute();
         return true;
       }).catch(function () { return false; });
     },
@@ -344,6 +408,16 @@
       return definitif ? API.purge('eleve', id) : API.trash('eleve', id);
     },
     deleteDoc: function (id) { return API.trash('document', id); },
+
+    saveInscription: function (row) {
+      return call('mh_inscription_save', { p_ws: WS, p_code: code(), p_row: row }, null,
+        'Inscription ' + (row.formation || ''));
+    },
+    deleteInscription: function (id) {
+      return call('mh_inscription_delete', { p_ws: WS, p_code: code(), p_id: id }, function (d) {
+        d.inscriptions = (d.inscriptions || []).filter(function (i) { return i.id !== id; });
+      }, 'Suppression inscription');
+    },
 
     saveDoc: function (row) {
       return call('mh_doc_save', { p_ws: WS, p_code: code(), p_row: row }, null,
@@ -454,8 +528,8 @@
   };
 
   /* ---------- connexion / reconnexion ---------- */
-  w.addEventListener('online', function () { majEtatReseau(); });
-  w.addEventListener('offline', function () { online = false; emit(); });
+  w.addEventListener('online', function () { majEtatReseau().then(ecoute); });
+  w.addEventListener('offline', function () { online = false; coupeEcoute(); emit(); });
   w.addEventListener('focus', function () { majEtatReseau(); });
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) majEtatReseau();
@@ -465,8 +539,9 @@
   w.MHData = API;
 
   if (code()) {
-    majEtatReseau().then(function () { return flush(); }).then(pull);
+    majEtatReseau().then(function () { return flush(); }).then(pull).then(ecoute);
   } else {
     majEtatReseau();
   }
+  document.addEventListener('mh:code', function () { ecoute(); });
 })(window);

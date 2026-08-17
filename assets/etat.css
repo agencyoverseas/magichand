@@ -122,3 +122,123 @@ body:has(.mh-bandeau-etat.show){ padding-top:40px }
   .side::after{ display:none }
   body.mh-side-ouverte .side{ transform:translateX(0) }
 }
+
+/* ---------- grosse pastille d'état (barre du haut) ---------- */
+.mh-pastille{
+  width:26px; height:26px; flex:none;
+  border:0; padding:0; margin:0 2px;
+  border-radius:50%;
+  background:var(--muted);
+  cursor:pointer;
+  position:relative;
+  box-shadow:0 0 0 3px rgba(0,0,0,.05);
+  transition:background .2s, box-shadow .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mh-pastille:active{ transform:scale(.92) }
+
+.mh-pastille.vert  { background:var(--ok);   box-shadow:0 0 0 3px var(--ok-soft) }
+.mh-pastille.orange{ background:var(--wait); box-shadow:0 0 0 3px var(--wait-soft) }
+.mh-pastille.rouge { background:var(--late); box-shadow:0 0 0 3px var(--late-soft) }
+
+/* seul l'orange bouge : un envoi en cours se voit, une coupure reste fixe */
+.mh-pastille.orange::after{
+  content:''; position:absolute; inset:0;
+  border-radius:50%; background:var(--wait);
+  animation:mh-pulse-envoi 1.4s ease-out infinite;
+}
+@keyframes mh-pulse-envoi{
+  0%  { transform:scale(1);   opacity:.55 }
+  100%{ transform:scale(1.9); opacity:0 }
+}
+@media (prefers-reduced-motion:reduce){
+  .mh-pastille.orange::after{ animation:none }
+}
+
+/* ---------- bandeau « un autre appareil a modifié » ---------- */
+.mh-bandeau-distant{
+  display:none;
+  position:fixed; left:50%; transform:translateX(-50%);
+  top:calc(8px + env(safe-area-inset-top)); z-index:420;
+  padding:7px 14px; border-radius:999px;
+  background:var(--green); color:#fff;
+  font:600 12px var(--sans);
+  box-shadow:var(--shadow-s);
+  animation:mh-descend .25s ease;
+}
+.mh-bandeau-distant.show{ display:block }
+@keyframes mh-descend{
+  from{ opacity:0; transform:translate(-50%,-8px) }
+  to  { opacity:1; transform:translate(-50%,0) }
+}
+/* si le bandeau hors ligne occupe déjà le haut, on se place dessous */
+body:has(.mh-bandeau-etat.show) .mh-bandeau-distant{ top:calc(48px + env(safe-area-inset-top)) }
+
+/* ============================================================
+   Bibliothèque de documents
+   ============================================================ */
+.biblio-bar{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap }
+.biblio-bar .inp{ flex:1; min-width:180px }
+.biblio-filtres{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap }
+.biblio-filtres .inp{ flex:1; min-width:120px }
+
+.biblio-liste{ display:flex; flex-direction:column; gap:8px }
+.bib-l{
+  display:flex; align-items:center; gap:12px; width:100%;
+  padding:12px; text-align:left; cursor:pointer;
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius-sm); box-shadow:var(--shadow-s);
+  font:inherit; color:inherit;
+}
+.bib-l:active{ transform:scale(.995) }
+.bib-vig{
+  width:38px; height:46px; flex:none; border-radius:8px;
+  display:grid; place-items:center;
+  background:var(--green-soft); color:var(--green);
+  border:1px solid var(--line);
+}
+.bib-vig svg{ width:20px; height:20px }
+.bib-vig.arefaire{
+  font:600 8.5px var(--sans); color:var(--wait);
+  background:var(--wait-soft); border-color:rgba(232,149,76,.35);
+  text-align:center; line-height:1.15; padding:2px;
+}
+.bib-t{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 }
+.bib-t b{ font:600 14px var(--sans); color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.bib-t span{ font:400 12px var(--sans); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.bib-d{ font:600 11.5px var(--sans); color:var(--ink2); flex:none }
+
+/* ============================================================
+   Sélection des documents et envoi groupé
+   ============================================================ */
+.sel-bar{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:9px 11px; margin:8px 0;
+  background:var(--green-soft); border-radius:var(--radius-xs);
+  font:600 12.5px var(--sans); color:var(--ink);
+}
+.sel-tout{ display:flex; align-items:center; gap:8px; cursor:pointer }
+.sel-bar span{ font-weight:400; color:var(--muted) }
+.sel-case{ width:20px; height:20px; flex:none; accent-color:var(--green); margin-right:2px }
+.fdoc-row.en-selection{ background:var(--green-soft) }
+.sel-actions{ display:flex; gap:8px; margin:10px 0 4px }
+.sel-actions .btn{ flex:1 }
+
+.canal-bg{
+  position:fixed; inset:0; z-index:500;
+  background:rgba(11,58,48,.45);
+  display:grid; place-items:center; padding:20px;
+  animation:mh-fondu .18s ease;
+}
+@keyframes mh-fondu{ from{opacity:0} to{opacity:1} }
+.canal-panel{
+  width:100%; max-width:340px;
+  display:flex; flex-direction:column; gap:9px;
+  padding:20px; border-radius:var(--radius);
+  background:var(--card-solid); box-shadow:var(--shadow);
+}
+.canal-panel.large{ max-width:400px }
+.canal-panel b{ font:700 16px var(--serif); color:var(--ink); margin-bottom:4px }
+.canal-panel .fld{ margin:0 }
+.canal-panel .acts{ display:flex; gap:8px; margin-top:6px }
+.canal-panel .acts .btn{ flex:1 }

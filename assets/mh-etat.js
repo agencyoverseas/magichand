@@ -40,6 +40,97 @@
      Pastille et bandeau
      ============================================================ */
 
+
+  /* ============================================================
+     Grosse pastille d'état, en haut à droite
+        vert   : connecté, tout est parti
+        orange : envoi en cours ou éléments en attente
+        rouge  : hors ligne (fixe, pas de clignotement)
+     Appui court : resynchronise. Appui long : ouvre le détail.
+     ============================================================ */
+  function pastilleEtat() {
+    var p = byId('mhPastille');
+    if (p) return p;
+    var hote = d.querySelector('.appbar');
+    if (!hote) return null;
+    p = d.createElement('button');
+    p.id = 'mhPastille';
+    p.className = 'mh-pastille';
+    p.type = 'button';
+    p.setAttribute('aria-label', 'État de la synchronisation');
+    var theme = byId('mhTheme');
+    if (theme && theme.parentNode) theme.parentNode.insertBefore(p, theme.nextSibling);
+    else hote.appendChild(p);
+
+    var minuteur = null, longPresse = false;
+    function debut() {
+      longPresse = false;
+      minuteur = setTimeout(function () { longPresse = true; detailPastille(); }, 550);
+    }
+    function fin() {
+      clearTimeout(minuteur);
+      if (longPresse) return;
+      var api = M(); if (!api) return;
+      toast('Synchronisation…');
+      api.ping().then(function () { return api.flush(); })
+        .then(function () { return api.pull(); })
+        .then(function () { toast('À jour'); });
+    }
+    p.addEventListener('mousedown', debut);
+    p.addEventListener('touchstart', debut, { passive: true });
+    ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function (ev) {
+      p.addEventListener(ev, function (e) { if (ev === 'mouseleave') { clearTimeout(minuteur); return; } fin(); });
+    });
+    p.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    return p;
+  }
+
+  function detailPastille() {
+    var api = M(); if (!api) return;
+    var f = api.fileCompte();
+    var msg = (api.online ? 'Connecté' : 'Hors ligne')
+      + (api.tempsReel ? ' · temps réel actif' : ' · temps réel inactif')
+      + ' · ' + f.attente + ' en attente'
+      + (f.bloquees ? ' · ' + f.bloquees + ' à reprendre' : '');
+    toast(msg);
+  }
+
+  function peintPastille(online, attente, bloquees) {
+    var p = pastilleEtat(); if (!p) return;
+    var etat = !online ? 'rouge' : ((attente || bloquees) ? 'orange' : 'vert');
+    p.className = 'mh-pastille ' + etat;
+    p.title = etat === 'rouge' ? 'Hors ligne'
+      : etat === 'orange' ? (attente + bloquees) + ' en cours d\'envoi'
+        : 'Synchronisé';
+  }
+
+  /* message discret quand un autre appareil a modifié quelque chose */
+  var libelles = {
+    mh_eleves: 'Élèves mis à jour', mh_documents: 'Documents mis à jour',
+    mh_inscriptions: 'Inscriptions mises à jour', mh_emargements: 'Émargements mis à jour',
+    mh_offers: 'Catalogue mis à jour', mh_modules: 'Catalogue mis à jour',
+    mh_sessions: 'Sessions mises à jour', mh_prospects: 'Closing mis à jour'
+  };
+  var tempoDistant = null;
+  w.addEventListener('mh:distant', function (ev) {
+    var src = (ev.detail && ev.detail.source) || '';
+    var b = bandeauDistant();
+    b.textContent = libelles[src] || 'Données mises à jour';
+    b.className = 'mh-bandeau-distant show';
+    clearTimeout(tempoDistant);
+    tempoDistant = setTimeout(function () { b.className = 'mh-bandeau-distant'; }, 4000);
+  });
+
+  function bandeauDistant() {
+    var b = byId('mhBandeauDistant');
+    if (b) return b;
+    b = d.createElement('div');
+    b.id = 'mhBandeauDistant';
+    b.className = 'mh-bandeau-distant';
+    if (d.body) d.body.appendChild(b);
+    return b;
+  }
+
   function bandeau() {
     var b = byId('mhBandeauEtat');
     if (b) return b;
@@ -59,6 +150,8 @@
     // pastille du haut (élément déjà présent dans index.html)
     var off = byId('mhOffline');
     if (off) off.classList.toggle('show', !online);
+
+    peintPastille(online, attente, bloquees);
 
     // pastilles de l'écran Compte
     ['syncDot', 'syncDotD'].forEach(function (id) {
@@ -310,6 +403,7 @@
   }
 
   function boot() {
+    pastilleEtat();
     peintEtat(null);
     majBoite();
     branche_side();
