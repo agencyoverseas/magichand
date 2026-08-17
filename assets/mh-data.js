@@ -1,22 +1,47 @@
 /* ============================================================
    mh-data.js — Accès aux données par module.
-   Remplace la lecture/écriture du JSON monobloc mh_state par
-   des appels RPC (mh_data_get, mh_eleve_save, …). Aucune table
-   n'est lisible avec la clé anon : le code atelier est vérifié
-   côté serveur à chaque appel.
+   Unique chemin vers Supabase depuis la refonte : mh_state et
+   sync.js ont disparu. Aucune table n'est lisible avec la clé
+   anon, le code atelier est vérifié côté serveur à chaque appel.
 
    Hors ligne : tout est servi depuis un cache local, les
-   écritures sont mises en file et rejouées à la reconnexion.
+   écritures partent dans une file d'attente et sont rejouées à
+   la reconnexion.
+
+   Ce que cette version corrige :
+
+     · la file n'est plus vidée en bloc à la fin du rejeu. Avant,
+       une opération qui échouait était quand même effacée : le
+       travail était perdu sans un mot. Maintenant chaque
+       opération n'est retirée que lorsque le serveur l'a
+       acceptée ;
+     · chaque opération compte ses tentatives. Cinq essais
+       espacés, puis elle est mise de côté et signalée, sans
+       bloquer celles qui suivent ;
+     · l'état « en ligne » ne croit plus le navigateur sur
+       parole. Un wifi sans internet est vu comme hors ligne,
+       parce qu'on interroge réellement le serveur ;
+     · la file est consultable : on sait ce qui attend, depuis
+       quand, et pourquoi ça coince.
+
    Conflit : le plus récent gagne, ligne par ligne (updated_at).
    ============================================================ */
 (function (w) {
   'use strict';
 
   var CFG = w.MH_SUPABASE || {};
-  var WS = CFG.workspace || (function(){ try{ return (localStorage.getItem('mh_ws')||'').trim(); }catch(e){ return ''; } })() || 'magic-hands';
+  var WS = CFG.workspace || (function () { try { return (localStorage.getItem('mh_ws') || '').trim(); } catch (e) { return ''; } })() || 'magic-hands';
   var LS_CACHE = 'mh.data.cache';
   var LS_QUEUE = 'mh.data.queue';
   var LS_CODE = 'mh_code_v1';   // même clé que mh-api.js : un seul code pour toute l'app
+
+  /* Espacement des tentatives : 1 s, 4 s, 15 s, 1 min, 5 min.
+     Au-delà, l'opération est mise de côté — insister davantage
+     viderait la batterie sans rien changer. */
+  var ATTENTES = [1000, 4000, 15000, 60000, 300000];
+  var MAX_ESSAIS = ATTENTES.length;
+  var PING_MS = 20000;          // fréquence du test réseau réel
+  var PING_TIMEOUT = 6000;
 
   var sb = null;
   function client() {
@@ -27,41 +52,163 @@
   }
 
   function code() { try { return (localStorage.getItem(LS_CODE) || '').trim(); } catch (e) { return ''; } }
-  function setCode(c) { try { localStorage.setItem(LS_CODE, c); } catch (e) {} }
+  function setCode(c) { try { localStorage.setItem(LS_CODE, c); } catch (e) { } }
 
-  function readJSON(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
-  function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function readJSON(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+  function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 
-  /* ---------- état local ---------- */
-  var DATA = readJSON(LS_CACHE, {
-    eleves: [], documents: [], offers: [], modules: [], sessions: [],
-    org: [], lieux: [], prospects: [], calls: [], echeances: [], settings: {}
-  });
-  var online = navigator.onLine;
-  var listeners = [];
-
-  function emit() { listeners.forEach(function (f) { try { f(DATA, online); } catch (e) {} }); }
-  function onChange(f) { listeners.push(f); return function () { listeners = listeners.filter(function (x) { return x !== f; }); }; }
-
-  /* ---------- file d'attente hors ligne ---------- */
-  function queue(op) {
-    var q = readJSON(LS_QUEUE, []);
-    q.push({ op: op.fn, args: op.args, at: Date.now() });
-    writeJSON(LS_QUEUE, q);
+  function vide() {
+    return {
+      eleves: [], documents: [], offers: [], modules: [], sessions: [],
+      org: [], lieux: [], prospects: [], calls: [], echeances: [], settings: {}
+    };
   }
 
-  function flush() {
-    var c = client(); if (!c || !online) return Promise.resolve(0);
-    var q = readJSON(LS_QUEUE, []);
-    if (!q.length) return Promise.resolve(0);
-    // rejeu dans l'ordre de saisie : la dernière écriture d'une ligne l'emporte
-    var chain = Promise.resolve(), done = 0;
-    q.forEach(function (item) {
-      chain = chain.then(function () {
-        return c.rpc(item.op, item.args).then(function () { done++; });
-      }).catch(function () { /* on garde l'ordre, on ignore l'échec isolé */ });
+  /* ---------- état local ---------- */
+  var DATA = readJSON(LS_CACHE, vide());
+  var online = navigator.onLine;   // valeur de départ, corrigée par le premier ping
+  var listeners = [];
+  var flushEnCours = false;
+  var timerRejeu = null;
+
+  function emit() {
+    listeners.forEach(function (f) { try { f(DATA, online); } catch (e) { } });
+    try {
+      w.dispatchEvent(new CustomEvent('mh:etat', {
+        detail: { online: online, attente: enAttente(), bloquees: bloquees() }
+      }));
+    } catch (e) { }
+  }
+  function onChange(f) {
+    listeners.push(f);
+    return function () { listeners = listeners.filter(function (x) { return x !== f; }); };
+  }
+
+  /* ============================================================
+     File d'attente
+     ============================================================ */
+
+  function file() { return readJSON(LS_QUEUE, []); }
+  function ecrisFile(q) { writeJSON(LS_QUEUE, q); }
+
+  function enAttente() {
+    return file().filter(function (o) { return !o.bloque; }).length;
+  }
+  function bloquees() {
+    return file().filter(function (o) { return o.bloque; }).length;
+  }
+
+  function queue(fn, args, libelle) {
+    var q = file();
+    q.push({
+      id: 'op_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      op: fn, args: args, libelle: libelle || fn,
+      at: Date.now(), essais: 0, prochain: 0, erreur: null, bloque: false
     });
-    return chain.then(function () { writeJSON(LS_QUEUE, []); return done; });
+    ecrisFile(q);
+    emit();
+    planifieRejeu();
+  }
+
+  /** Rejoue la file dans l'ordre. Une opération n'est retirée
+      qu'une fois acceptée par le serveur. */
+  function flush() {
+    if (flushEnCours) return Promise.resolve(0);
+    var c = client();
+    if (!c || !online || !code()) return Promise.resolve(0);
+
+    var q = file();
+    var aFaire = q.filter(function (o) { return !o.bloque && (o.prochain || 0) <= Date.now(); });
+    if (!aFaire.length) { planifieRejeu(); return Promise.resolve(0); }
+
+    flushEnCours = true;
+    var passees = 0;
+    var chaine = Promise.resolve();
+
+    aFaire.forEach(function (op) {
+      chaine = chaine.then(function () {
+        return c.rpc(op.op, op.args).then(function (r) {
+          if (r && r.error) throw r.error;
+          // succès : on retire cette opération, et elle seule
+          var actuelle = file().filter(function (x) { return x.id !== op.id; });
+          ecrisFile(actuelle);
+          passees++;
+        }).catch(function (e) {
+          var actuelle = file();
+          var i = actuelle.findIndex(function (x) { return x.id === op.id; });
+          if (i < 0) return;                    // retirée entre-temps
+          var o = actuelle[i];
+          o.essais = (o.essais || 0) + 1;
+          o.erreur = (e && (e.message || e.details)) || 'échec inconnu';
+          if (o.essais >= MAX_ESSAIS) {
+            o.bloque = true;                    // mise de côté, la file continue
+          } else {
+            o.prochain = Date.now() + ATTENTES[o.essais - 1];
+          }
+          actuelle[i] = o;
+          ecrisFile(actuelle);
+        });
+      });
+    });
+
+    return chaine.then(function () {
+      flushEnCours = false;
+      emit();
+      planifieRejeu();
+      return passees;
+    }).catch(function () {
+      flushEnCours = false;
+      planifieRejeu();
+      return passees;
+    });
+  }
+
+  /** Programme le prochain rejeu sur l'opération la plus proche. */
+  function planifieRejeu() {
+    clearTimeout(timerRejeu);
+    var q = file().filter(function (o) { return !o.bloque; });
+    if (!q.length || !online) return;
+    var proch = q.reduce(function (min, o) {
+      var t = o.prochain || 0;
+      return t < min ? t : min;
+    }, Infinity);
+    var delai = Math.max(500, (proch === Infinity ? Date.now() : proch) - Date.now());
+    timerRejeu = setTimeout(function () { flush(); }, delai);
+  }
+
+  /* ============================================================
+     Test réseau réel
+     Le navigateur dit « en ligne » dès qu'une carte wifi est
+     associée, même sans accès à internet. On demande donc au
+     serveur lui-même.
+     ============================================================ */
+  function ping() {
+    if (!CFG.url || !CFG.anonKey || !w.fetch) return Promise.resolve(navigator.onLine);
+    if (!navigator.onLine) return Promise.resolve(false);   // inutile d'essayer
+    var ctrl = w.AbortController ? new AbortController() : null;
+    var minuteur = setTimeout(function () { if (ctrl) ctrl.abort(); }, PING_TIMEOUT);
+    return w.fetch(CFG.url + '/rest/v1/', {
+      method: 'HEAD',
+      headers: { apikey: CFG.anonKey },
+      cache: 'no-store',
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (r) {
+      clearTimeout(minuteur);
+      return r.status > 0;      // toute réponse HTTP prouve que le serveur répond
+    }).catch(function () {
+      clearTimeout(minuteur);
+      return false;
+    });
+  }
+
+  function majEtatReseau() {
+    return ping().then(function (ok) {
+      if (ok === online) return ok;
+      online = ok;
+      emit();
+      if (ok) flush().then(pull);
+      return ok;
+    });
   }
 
   /* ---------- lecture ---------- */
@@ -80,15 +227,18 @@
   }
 
   /* ---------- écriture générique ---------- */
-  function call(fn, args, optimistic) {
-    if (typeof optimistic === 'function') { try { optimistic(DATA); writeJSON(LS_CACHE, DATA); emit(); } catch (e) {} }
+  function call(fn, args, optimistic, libelle) {
+    if (typeof optimistic === 'function') {
+      try { optimistic(DATA); writeJSON(LS_CACHE, DATA); emit(); } catch (e) { }
+    }
     var c = client();
-    if (!c || !online) { queue({ fn: fn, args: args }); return Promise.resolve(null); }
+    if (!c || !online) { queue(fn, args, libelle); return Promise.resolve(null); }
     return c.rpc(fn, args).then(function (r) {
       if (r.error) throw r.error;
       return pull().then(function () { return r.data; });
     }).catch(function (e) {
-      queue({ fn: fn, args: args });
+      // l'écriture n'est pas perdue : elle repart dans la file
+      queue(fn, args, libelle);
       console.warn('[mh-data] écriture différée', e.message || e);
       return null;
     });
@@ -103,13 +253,36 @@
     onChange: onChange,
     pull: pull,
     flush: flush,
+    ping: majEtatReseau,
 
-    /**
-     * Vérifie le code atelier côté serveur.
-     * On passe par mh_data_get plutôt que mh_check : la fonction de
-     * vérification n'est pas exposée à la clé anon, et un appel qui
-     * réussit vaut validation tout en chargeant les données.
-     */
+    /* --- file d'attente, pour l'écran de diagnostic --- */
+    fileAttente: function () {
+      return file().map(function (o) {
+        return {
+          id: o.id, libelle: o.libelle || o.op, op: o.op,
+          depuis: o.at, essais: o.essais || 0,
+          erreur: o.erreur || null, bloque: !!o.bloque
+        };
+      });
+    },
+    fileCompte: function () { return { attente: enAttente(), bloquees: bloquees() }; },
+    /** Remet une opération mise de côté dans le circuit. */
+    fileRelance: function (id) {
+      var q = file();
+      var i = q.findIndex(function (x) { return x.id === id; });
+      if (i < 0) return false;
+      q[i].bloque = false; q[i].essais = 0; q[i].prochain = 0; q[i].erreur = null;
+      ecrisFile(q); emit(); flush();
+      return true;
+    },
+    /** Abandonne une opération : c'est le seul cas où du travail
+        est jeté, et il faut l'avoir demandé. */
+    fileAbandonne: function (id) {
+      ecrisFile(file().filter(function (x) { return x.id !== id; }));
+      emit();
+      return true;
+    },
+
     login: function (c) {
       var cl = client();
       if (!cl) return Promise.resolve(false);
@@ -117,6 +290,7 @@
         if (r.error || !r.data) return false;
         setCode(c);
         DATA = r.data; writeJSON(LS_CACHE, DATA); emit();
+        try { document.dispatchEvent(new CustomEvent('mh:code')); } catch (e) { }
         return true;
       }).catch(function () { return false; });
     },
@@ -126,19 +300,54 @@
         if (!row.id) return;
         var i = d.eleves.findIndex(function (e) { return e.id === row.id; });
         if (i >= 0) d.eleves[i] = Object.assign({}, d.eleves[i], row, { updated_at: new Date().toISOString() });
-      });
+      }, 'Fiche élève ' + ((row.prenom || '') + ' ' + (row.nom || '')).trim());
     },
-    deleteEleve: function (id, definitif, avecDocs) {
-      return call('mh_eleve_delete', {
-        p_ws: WS, p_code: code(), p_id: id,
-        p_definitif: !!definitif, p_avec_docs: !!avecDocs
-      }, function (d) {
-        if (definitif) d.eleves = d.eleves.filter(function (e) { return e.id !== id; });
-        else { var e = d.eleves.find(function (x) { return x.id === id; }); if (e) e.archived = true; }
-      });
+
+    /* --- corbeille --- */
+    trash: function (kind, id, libelle) {
+      return call('mh_trash', { p_ws: WS, p_code: code(), p_kind: kind, p_id: id }, function (d) {
+        if (kind === 'eleve') {
+          d.eleves = d.eleves.filter(function (e) { return e.id !== id; });
+          d.documents = d.documents.filter(function (x) { return x.eleve_id !== id; });
+        } else {
+          d.documents = d.documents.filter(function (x) { return x.id !== id; });
+        }
+      }, libelle || ('Suppression ' + kind));
     },
-    saveDoc: function (row) { return call('mh_doc_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveCall: function (row) { return call('mh_call_save', { p_ws: WS, p_code: code(), p_row: row }); },
+    restore: function (kind, id) {
+      return call('mh_restore', { p_ws: WS, p_code: code(), p_kind: kind, p_id: id }, null, 'Restauration ' + kind);
+    },
+    purge: function (kind, id) {
+      return call('mh_purge', { p_ws: WS, p_code: code(), p_kind: kind, p_id: id }, null, 'Purge ' + kind);
+    },
+    trashList: function () {
+      var c = client();
+      if (!c || !online || !code()) return Promise.resolve({ eleves: [], documents: [] });
+      return c.rpc('mh_trash_list', { p_ws: WS, p_code: code() })
+        .then(function (r) { return (r && r.data) || { eleves: [], documents: [] }; })
+        .catch(function () { return { eleves: [], documents: [] }; });
+    },
+
+    /* Conservé pour ne rien casser dans le code existant :
+       une suppression non définitive passe désormais par la
+       corbeille, comme demandé au cadrage. */
+    deleteEleve: function (id, definitif) {
+      return definitif ? API.purge('eleve', id) : API.trash('eleve', id);
+    },
+    deleteDoc: function (id) { return API.trash('document', id); },
+
+    saveDoc: function (row) {
+      return call('mh_doc_save', { p_ws: WS, p_code: code(), p_row: row }, null,
+        'Document ' + (row.type || '') + ' ' + (row.formation || ''));
+    },
+    /** Enregistre le chemin du PDF archivé dans Storage. */
+    setDocPdf: function (id, path, taille) {
+      return call('mh_doc_pdf_set', {
+        p_ws: WS, p_code: code(), p_id: id, p_path: path, p_taille: taille || 0
+      }, null, 'Archivage PDF');
+    },
+
+    saveCall: function (row) { return call('mh_call_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Appel'); },
     setEcheance: function (id, enc, date, preuve) {
       return call('mh_ech_set', {
         p_ws: WS, p_code: code(), p_id: id, p_encaisse: !!enc,
@@ -146,37 +355,31 @@
       }, function (d) {
         var e = d.echeances.find(function (x) { return x.id === id; });
         if (e) { e.encaisse = !!enc; e.date_enc = date || new Date().toISOString().slice(0, 10); }
-      });
+      }, 'Échéance');
     },
-    saveOffer: function (row) { return call('mh_offer_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveModule: function (row) { return call('mh_module_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveSession: function (row) { return call('mh_session_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveOrg: function (row) { return call('mh_org_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveLieu: function (row) { return call('mh_lieu_save', { p_ws: WS, p_code: code(), p_row: row }); },
-    saveProspect: function (row) { return call('mh_prospect_save', { p_ws: WS, p_code: code(), p_row: row }); },
+    saveOffer: function (row) { return call('mh_offer_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Offre ' + (row.nom || '')); },
+    saveModule: function (row) { return call('mh_module_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Module ' + (row.nom || '')); },
+    saveSession: function (row) { return call('mh_session_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Session'); },
+    saveOrg: function (row) { return call('mh_org_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Organisme'); },
+    saveLieu: function (row) { return call('mh_lieu_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Lieu ' + (row.nom || '')); },
+    saveProspect: function (row) { return call('mh_prospect_save', { p_ws: WS, p_code: code(), p_row: row }, null, 'Prospect ' + (row.nom || '')); },
     deleteProspect: function (id) {
       return call('mh_prospect_delete', { p_ws: WS, p_code: code(), p_id: id }, function (d) {
         d.prospects = d.prospects.filter(function (p) { return p.id !== id; });
-      });
+      }, 'Suppression prospect');
     },
-    deleteCatalog: function (id, kind) { return call('mh_catalog_delete', { p_ws: WS, p_code: code(), p_id: id, p_kind: kind || 'offer' }); },
-    setSetting: function (cle, val) { return call('mh_setting_put', { p_ws: WS, p_code: code(), p_cle: cle, p_val: val }); },
+    deleteCatalog: function (id, kind) {
+      return call('mh_catalog_delete', { p_ws: WS, p_code: code(), p_id: id, p_kind: kind || 'offer' }, null, 'Suppression catalogue');
+    },
+    setSetting: function (cle, val) { return call('mh_setting_put', { p_ws: WS, p_code: code(), p_cle: cle, p_val: val }, null, 'Réglages'); },
 
     /* ---------- calculs ---------- */
 
-    /** Échéances d'un appel, triées. */
     echeancesOf: function (callId) {
       return DATA.echeances.filter(function (e) { return e.call_id === callId; })
-                           .sort(function (a, b) { return a.num - b.num; });
+        .sort(function (a, b) { return a.num - b.num; });
     },
 
-    /**
-     * Chiffres du tableau de bord.
-     * Une vente marquée « commission » rapporte son taux (10 %) ;
-     * une vente « ca_propre » rapporte le montant encaissé entier.
-     * Les ventes « a_qualifier » restent traitées en commission,
-     * comme avant la refonte, et sont comptées à part.
-     */
     totaux: function (depuis) {
       var t = { ca: 0, ventes: 0, commissions: 0, encaisse: 0, aQualifier: 0 };
       DATA.calls.forEach(function (c) {
@@ -196,7 +399,6 @@
       return t;
     },
 
-    /** CA encaissé mois par mois, sur n mois glissants. */
     caParMois: function (n) {
       n = n || 12;
       var out = [], now = new Date();
@@ -213,13 +415,19 @@
       return out;
     },
 
-    /** Rapproche un nom de prospect d'une fiche élève (tolérant à la casse et aux accents). */
+    /** Fiches incomplètes : ni téléphone ni email. */
+    aCompleter: function () {
+      return (DATA.eleves || []).filter(function (e) {
+        return !(e.tel || '').trim() || !(e.email || '').trim();
+      });
+    },
+
     matchEleve: function (nom) {
       if (!nom) return null;
       var k = API.normalise(nom);
       return DATA.eleves.find(function (e) {
         return API.normalise((e.prenom || '') + ' ' + (e.nom || '')) === k
-            || API.normalise((e.nom || '') + ' ' + (e.prenom || '')) === k;
+          || API.normalise((e.nom || '') + ' ' + (e.prenom || '')) === k;
       }) || null;
     },
     normalise: function (s) {
@@ -227,7 +435,6 @@
         .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     },
 
-    /** Numéro au format wa.me : indicatif conservé, zéro initial retiré. */
     waNumber: function (tel, indicatifDefaut) {
       var t = String(tel || '').replace(/[^\d+]/g, '');
       if (!t) return '';
@@ -238,12 +445,19 @@
   };
 
   /* ---------- connexion / reconnexion ---------- */
-  w.addEventListener('online', function () {
-    online = true; emit();
-    flush().then(pull);
-  });
+  w.addEventListener('online', function () { majEtatReseau(); });
   w.addEventListener('offline', function () { online = false; emit(); });
+  w.addEventListener('focus', function () { majEtatReseau(); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) majEtatReseau();
+  });
+  setInterval(majEtatReseau, PING_MS);
 
   w.MHData = API;
-  if (code()) { flush().then(pull); }
+
+  if (code()) {
+    majEtatReseau().then(function () { return flush(); }).then(pull);
+  } else {
+    majEtatReseau();
+  }
 })(window);

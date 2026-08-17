@@ -2,16 +2,26 @@
    mh-bridge.js — Rebranchement de l'app sur les tables par
    module.
 
-   app.js conserve son fonctionnement interne (il lit et écrit
-   dans localStorage). Ce pont fait deux choses :
+   app.js conserve son fonctionnement interne : il lit et écrit
+   dans localStorage. Ce pont fait deux choses :
 
      1. au démarrage, il remplit localStorage à partir des
         tables Supabase, au format que app.js attend ;
      2. à chaque écriture de app.js, il détecte ce qui a changé
-        et le renvoie dans la bonne table via les RPC.
+        et le renvoie dans la bonne table.
 
-   Résultat : plus rien ne transite par mh_state, sans avoir eu
-   à réécrire la logique métier existante.
+   Ce que cette version corrige :
+
+     · seules les CRÉATIONS remontaient. Une fiche corrigée, un
+       téléphone ajouté, un document supprimé : rien ne partait
+       en base. C'est la cause principale des écarts entre le
+       téléphone et l'ordinateur ;
+     · le téléphone et l'email n'étaient jamais transmis, d'où
+       les fiches « à compléter » vides ;
+     · l'état de référence n'était pas rafraîchi après une
+       relecture du serveur. Une écriture suivante pouvait donc
+       être lue comme une suppression de tout ce qui venait
+       d'arriver.
 
    Conflit : chaque ligne porte son updated_at, le plus récent
    gagne. Hors ligne : les écritures sont mises en file par
@@ -22,6 +32,7 @@
 
   var LS = { cat: 'mh_catalog_v3', cli: 'mh_clients_v3', set: 'mh_settings_v1', con: 'mh_contacts_v1' };
   var ready = false, applying = false;
+  var _setItem = localStorage.setItem.bind(localStorage);
 
   function D() { return w.MHData ? w.MHData.data : null; }
   function num(v) { return Number(v || 0); }
@@ -31,7 +42,9 @@
      1. TABLES  ->  FORMAT app.js
      ============================================================ */
 
-  /** Les documents émis, au format « clients » attendu par app.js. */
+  /** Les documents émis, au format « clients » attendu par app.js.
+      Le téléphone et l'email viennent de la fiche élève : côté app
+      ils sont portés par chaque document. */
   function toClients(data) {
     var byId = {};
     (data.eleves || []).forEach(function (e) { byId[e.id] = e; });
@@ -42,6 +55,8 @@
         eid: doc.eleve_id || '',
         prenom: e.prenom || '',
         nom: e.nom || '',
+        tel: e.tel || '',
+        email: e.email || '',
         adresse: doc.adresse || e.adresse || '',
         formation: doc.formation || e.formation || '',
         ds: iso(doc.date_debut),
@@ -50,12 +65,12 @@
         lieu: doc.lieu || '',
         em: iso(doc.date_emise),
         type: doc.type || 'cert',
+        pdf: doc.pdf_path || '',
         ts: doc.created_at ? Date.parse(doc.created_at) : Date.now()
       };
     }).sort(function (a, b) { return b.ts - a.ts; });
   }
 
-  /** Les prospects, au format « contacts ». */
   function toContacts(data) {
     return (data.prospects || []).map(function (p) {
       return {
@@ -72,7 +87,6 @@
     });
   }
 
-  /** Le catalogue, au format { offers, modules, sessions }. */
   function toCat(data) {
     return {
       offers: (data.offers || []).map(function (o) {
@@ -87,13 +101,12 @@
     };
   }
 
-  /** Les réglages : organisme, lieux, formateur. */
   function toSettings(data) {
     var org = (data.org || [])[0] || {};
     var legacy = (data.settings && data.settings.legacy) || {};
     return Object.assign({}, legacy, {
       etab: {
-        raison: org.raison || legacy.etab && legacy.etab.raison || 'MAGIC HANDS (SARL)',
+        raison: org.raison || (legacy.etab && legacy.etab.raison) || 'MAGIC HANDS (SARL)',
         adresse: org.adresse || (legacy.etab && legacy.etab.adresse) || '',
         siret: org.siret || (legacy.etab && legacy.etab.siret) || '',
         tel: org.tel || (legacy.etab && legacy.etab.tel) || '',
@@ -105,11 +118,22 @@
     });
   }
 
-  /** Écrit dans localStorage sans déclencher le renvoi vers la base. */
+  /* ---------- état de référence ----------
+     `last` est la photo de ce que le pont a déjà vu. Toute écriture
+     est comparée à cette photo. Elle DOIT être rafraîchie chaque
+     fois que le pont écrit lui-même dans localStorage, sinon la
+     comparaison suivante voit des suppressions imaginaires. */
+  var last = {};
+
+  function memorise(key, val) {
+    try { last[key] = JSON.parse(JSON.stringify(val)); } catch (e) { last[key] = val; }
+  }
+
   function put(key, val) {
     applying = true;
-    try { _setItem.call(localStorage, key, JSON.stringify(val)); } catch (e) {}
+    try { _setItem(key, JSON.stringify(val)); } catch (e) { }
     applying = false;
+    memorise(key, val);          // ← le correctif : la photo suit l'écriture
   }
 
   function hydrate() {
@@ -120,8 +144,7 @@
     if (cat.offers.length || cat.modules.length) put(LS.cat, cat);
     put(LS.set, toSettings(data));
     ready = true;
-    // app.js se recharge depuis localStorage via l'événement storage
-    try { w.dispatchEvent(new StorageEvent('storage', { key: LS.cli, storageArea: localStorage })); } catch (e) {}
+    try { w.dispatchEvent(new StorageEvent('storage', { key: LS.cli, storageArea: localStorage })); } catch (e) { }
     if (w.MHrefresh) w.MHrefresh();
     else if (w.refreshAll) w.refreshAll();
   }
@@ -132,7 +155,28 @@
 
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  /** Un document nouvellement généré : crée l'élève au besoin, puis le document. */
+  /** Champs qui appartiennent au document. */
+  function empreinteDoc(c) {
+    return [c.type || 'cert', c.formation || '', c.ds || '', c.de || '',
+      c.duree || '', c.lieu || '', c.em || '', c.adresse || ''].join('|');
+  }
+  /** Champs qui appartiennent à l'élève. */
+  function empreinteEleve(c) {
+    return [c.prenom || '', c.nom || '', c.tel || '', c.email || '', c.adresse || ''].join('|');
+  }
+
+  function ligneDoc(c, avecId) {
+    var row = {
+      eleve_id: c.eid || '',
+      type: c.type || 'cert', formation: c.formation || '',
+      date_debut: c.ds || '', date_fin: c.de || '', duree: c.duree || '',
+      lieu: c.lieu || '', date_emise: c.em || '', adresse: c.adresse || ''
+    };
+    if (avecId && UUID.test(c.id || '')) row.id = c.id;
+    return row;
+  }
+
+  /** Nouveau document : crée l'élève au besoin, puis le document. */
   function pushClient(c) {
     var M = w.MHData, data = D();
     var eleve = null;
@@ -146,25 +190,85 @@
     if (eleve) {
       chain = Promise.resolve(eleve.id);
     } else {
-      // création automatique : nom et téléphone suffisent, la fiche est marquée à compléter
       chain = M.saveEleve({
         prenom: c.prenom || '', nom: c.nom || '', adresse: c.adresse || '',
-        formation: c.formation || '', a_completer: !c.tel
+        formation: c.formation || '',
+        tel: c.tel || '', email: c.email || '',
+        a_completer: !(c.tel && c.email)
       });
     }
 
     return chain.then(function (eleveId) {
-      return M.saveDoc({
-        // marqué « auto » : la base ne recréera pas un document déjà
-        // présent. Un document créé à la main depuis l'app n'a pas
-        // ce marqueur et n'est donc jamais bloqué.
-        auto: true,
-        eleve_id: eleveId || (eleve && eleve.id) || '',
-        type: c.type || 'cert', formation: c.formation || '',
-        date_debut: c.ds || '', date_fin: c.de || '', duree: c.duree || '',
-        lieu: c.lieu || '', date_emise: c.em || '', adresse: c.adresse || ''
-      });
+      var row = ligneDoc(c, false);
+      row.eleve_id = eleveId || (eleve && eleve.id) || '';
+      return M.saveDoc(row);
     });
+  }
+
+  /* Côté app.js, le téléphone d'une fiche est recopié sur chacun de
+     ses documents : saisir un numéro sur une fiche de 9 documents
+     déclencherait 9 fois le même envoi. On retient donc la dernière
+     version envoyée par élève. */
+  var derniereFiche = {};
+
+  /** Document modifié : on met à jour la ligne, et la fiche élève
+      si ce sont ses coordonnées qui ont changé. */
+  function majClient(avant, apres) {
+    var M = w.MHData, jobs = [];
+
+    if (empreinteDoc(avant) !== empreinteDoc(apres) && UUID.test(apres.id || '')) {
+      jobs.push(M.saveDoc(ligneDoc(apres, true)));
+    }
+
+    if (empreinteEleve(avant) !== empreinteEleve(apres)) {
+      var id = apres.eid;
+      if (!UUID.test(id || '')) {
+        var e = M.matchEleve((apres.prenom || '') + ' ' + (apres.nom || ''));
+        id = e && e.id;
+      }
+      var sig = empreinteEleve(apres);
+      if (UUID.test(id || '') && derniereFiche[id] !== sig) {
+        derniereFiche[id] = sig;
+        jobs.push(M.saveEleve({
+          id: id,
+          prenom: apres.prenom || '', nom: apres.nom || '',
+          tel: apres.tel || '', email: apres.email || '',
+          adresse: apres.adresse || '', formation: apres.formation || '',
+          a_completer: !((apres.tel || '').trim() && (apres.email || '').trim())
+        }));
+      }
+    }
+    return Promise.all(jobs);
+  }
+
+  /** Documents disparus de la liste : mise à la corbeille.
+      Si TOUS les documents d'un élève disparaissent d'un coup,
+      c'est la fiche entière qui a été supprimée : on met l'élève
+      à la corbeille, ce qui emporte ses documents. */
+  function supprimeClients(partis, restants) {
+    var M = w.MHData, data = D() || {};
+    var vivantsParEleve = {};
+    restants.forEach(function (c) {
+      if (!c.eid) return;
+      vivantsParEleve[c.eid] = (vivantsParEleve[c.eid] || 0) + 1;
+    });
+
+    var elevesVides = {}, docsSeuls = [];
+    partis.forEach(function (c) {
+      if (c.eid && UUID.test(c.eid) && !vivantsParEleve[c.eid]) elevesVides[c.eid] = 1;
+      else docsSeuls.push(c);
+    });
+
+    var jobs = [];
+    Object.keys(elevesVides).forEach(function (id) {
+      var e = (data.eleves || []).find(function (x) { return x.id === id; });
+      var nom = e ? ((e.prenom || '') + ' ' + (e.nom || '')).trim() : '';
+      jobs.push(M.trash('eleve', id, 'Suppression élève ' + nom));
+    });
+    docsSeuls.forEach(function (c) {
+      if (UUID.test(c.id || '')) jobs.push(M.trash('document', c.id, 'Suppression document'));
+    });
+    return Promise.all(jobs);
   }
 
   function pushContact(p) {
@@ -177,8 +281,7 @@
     });
   }
 
-  /* Ne renvoyer le catalogue que s'il a réellement changé : sans ça
-     chaque sauvegarde de l'app recréait une copie de chaque ligne. */
+  /* Ne renvoyer le catalogue que s'il a réellement changé. */
   var catSignature = '';
   function pushCat(cat) {
     var sig = JSON.stringify(cat);
@@ -197,7 +300,6 @@
       }));
     });
     (cat.sessions || []).forEach(function (s) {
-      // une session sans dates n'a pas de sens : on ne l'envoie pas
       if (!s || (!s.s && !s.e)) return;
       jobs.push(M.saveSession({
         id: UUID.test(s.id || '') ? s.id : '', libelle: s.l || '',
@@ -233,36 +335,47 @@
   }
 
   /* ---------- détection des changements ---------- */
-  var last = {};
 
   function diffPush(key, val) {
     if (!ready || !w.MHData || !w.MHData.code()) return;
     var prev = last[key] || [];
-    last[key] = val;
+    memorise(key, val);
 
     if (key === LS.cli && Array.isArray(val)) {
-      var known = {}; prev.forEach(function (c) { known[c.id] = 1; });
-      val.filter(function (c) { return !known[c.id]; }).forEach(pushClient);
+      var avantParId = {}, apresParId = {};
+      prev.forEach(function (c) { avantParId[c.id] = c; });
+      val.forEach(function (c) { apresParId[c.id] = c; });
+
+      // créations et modifications
+      val.forEach(function (c) {
+        var a = avantParId[c.id];
+        if (!a) { pushClient(c); return; }
+        if (JSON.stringify(a) !== JSON.stringify(c)) majClient(a, c);
+      });
+
+      // suppressions
+      var partis = prev.filter(function (c) { return !apresParId[c.id]; });
+      if (partis.length) supprimeClients(partis, val);
       return;
     }
+
     if (key === LS.con && Array.isArray(val)) {
       var kn = {}; prev.forEach(function (c) { kn[c.id] = JSON.stringify(c); });
       val.forEach(function (c) { if (kn[c.id] !== JSON.stringify(c)) pushContact(c); });
-      // suppressions
       var vids = {}; val.forEach(function (c) { vids[c.id] = 1; });
       prev.forEach(function (c) {
         if (!vids[c.id] && UUID.test(c.id || '')) w.MHData.deleteProspect(c.id);
       });
       return;
     }
+
     if (key === LS.cat) { pushCat(val); return; }
     if (key === LS.set) { pushSettings(val); return; }
   }
 
   /* ---------- interception de localStorage ---------- */
-  var _setItem = localStorage.setItem;
   localStorage.setItem = function (k, v) {
-    _setItem.call(localStorage, k, v);
+    _setItem(k, v);
     if (applying) return;
     if (k !== LS.cli && k !== LS.con && k !== LS.cat && k !== LS.set) return;
     var parsed; try { parsed = JSON.parse(v); } catch (e) { return; }
@@ -272,35 +385,36 @@
   /* ---------- démarrage ---------- */
   function boot() {
     if (!w.MHData) { setTimeout(boot, 200); return; }
-    // état de référence avant toute écriture
     [LS.cli, LS.con, LS.cat, LS.set].forEach(function (k) {
-      try { last[k] = JSON.parse(localStorage.getItem(k)) || []; } catch (e) { last[k] = []; }
+      try { memorise(k, JSON.parse(localStorage.getItem(k)) || []); } catch (e) { last[k] = []; }
     });
     if (!w.MHData.code()) return;   // pas encore connecté : le pont s'activera après
-    w.MHData.pull().then(function () {
-      hydrate();
-      [LS.cli, LS.con, LS.cat, LS.set].forEach(function (k) {
-        try { last[k] = JSON.parse(localStorage.getItem(k)) || []; } catch (e) {}
-      });
-    });
+    w.MHData.pull().then(function () { hydrate(); });
     w.MHData.onChange(function () { if (ready) hydrate(); });
   }
 
-  /* L'ancienne synchronisation mh_state est neutralisée : deux
-     sources de vérité finiraient par diverger. */
+  /* mh_state et sync.js ont été retirés : ce pont est l'unique
+     chemin vers la base. Le drapeau reste exposé pour le code
+     ancien qui le teste encore. */
   w.MH_BRIDGE_ON = true;
 
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  /* Si le code atelier est saisi après le chargement, on démarre à ce
-     moment-là plutôt que d'attendre un rechargement de la page. */
-  var _si = localStorage.setItem;
   d.addEventListener('mh:code', boot);
   var attente = setInterval(function () {
     if (ready) { clearInterval(attente); return; }
     if (w.MHData && w.MHData.code()) { clearInterval(attente); boot(); }
   }, 1500);
 
-  w.MHBridge = { hydrate: hydrate, boot: boot, toClients: toClients, toContacts: toContacts };
+  w.MHBridge = {
+    hydrate: hydrate, boot: boot,
+    toClients: toClients, toContacts: toContacts,
+    /** Renvoi complet, pour le bouton « Tout renvoyer » des Réglages. */
+    toutRenvoyer: function () {
+      var cli = []; try { cli = JSON.parse(localStorage.getItem(LS.cli)) || []; } catch (e) { }
+      var jobs = cli.map(function (c) { return pushClient(c); });
+      return Promise.all(jobs).then(function () { return w.MHData.pull(); });
+    }
+  };
 })(window, document);

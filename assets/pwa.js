@@ -3,7 +3,7 @@
    - Enregistre le service worker (app-shell offline)
    - Capture beforeinstallprompt -> bannière discrète après usage
    - iOS (pas de beforeinstallprompt) -> mini-instructions
-   - Au retour réseau ('online') -> relance MHsync (pull+merge+push)
+   - Au retour réseau ('online') -> relance la synchro (MHData)
    ============================================================ */
 (function(){
 "use strict";
@@ -136,7 +136,8 @@ if(isIOS() && !isStandalone()){
 /* ---------- resync auto au retour réseau ---------- */
 window.addEventListener('online',function(){
   if(window.MH&&window.MH.toast)window.MH.toast('Connexion rétablie — synchronisation…');
-  if(window.MHsync&&window.MHsync.connect)window.MHsync.connect(null,function(){});
+  /* MHsync a disparu avec sync.js : c'est MHData qui porte la synchro. */
+  if(window.MHData){ window.MHData.ping().then(function(){ return window.MHData.flush(); }).then(function(){ return window.MHData.pull(); }); }
 });
 window.addEventListener('offline',function(){
   if(window.MH&&window.MH.toast)window.MH.toast('Hors-ligne — tes données restent en local');
